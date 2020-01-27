@@ -2,4 +2,4 @@
 A game written in TScript
 
 # Source Code
-[Here](game.tscript)
+[Here](https://raw.githubusercontent.com/manuel-fischer/LatticeCraft/master/game.tscript)
