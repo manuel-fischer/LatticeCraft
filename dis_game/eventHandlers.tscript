@@ -1,0 +1,250 @@
+
+namespace eventHandlers
+{
+	# helper functions
+	function adjustKey(k)
+	{
+		if k.size() == 1 then return String.fromUnicode(util.toLowerChar(k[0]));
+		return k;
+	}
+	# end helper functions
+	
+	
+	
+	setEventHandler("canvas.mousedown", function(event)
+	{
+		if gui.current == null then
+		{
+			updateXY(event);
+			if event.button == "left" then 
+			{
+				if inventory.isOnGui(mouseX, mouseY) then
+				{
+					inventory.onMouseDown(mouseX, mouseY);
+					mouseMode = mouseModes.hotbar;	
+				} else {
+					mouseTime = time();
+					mouseMode = null;
+				}
+			}
+		}
+		else
+		{
+			# BUG There is a bug when the inventory is opened and
+			# the mouse is not moved and then clicked, maybe a bug
+			# TSCRIPT
+			gui.current.onMouseDown(event);	
+		}
+	});
+
+
+	setEventHandler("canvas.mousemove", function(event)
+	{
+		if gui.current == null then
+		{
+			updateXY(event);
+			if mouseTime != null then
+			{
+				userAction(selX, selY);
+			}
+		}
+		else
+		{
+			gui.current.onMouseMove(event);
+		}
+	});
+
+
+	setEventHandler("canvas.mouseup", function(event)
+	{
+		if gui.current == null then
+		{
+			updateXY(event);
+			if event.button == "left" then 
+			{
+				mouseTrig();
+				mouseTime = null;
+				mouseMode = null;
+				#selX = null; selY = null;
+			}
+		}
+		else
+		{
+			gui.current.onMouseUp(event);
+		}
+	});
+
+
+	setEventHandler("canvas.mouseout", function(event)
+	{
+		if gui.current == null then
+		{
+			if selX != null then theWorldCB.markDirtyCB(selX, selY);
+		}
+		else
+		{
+			gui.current.onMouseOut(event);	
+		}
+		mouseInside = false;
+	});
+
+
+
+
+
+	setEventHandler("canvas.keydown", function(event)
+	{
+		if gui.current == null then
+		{
+			use namespace disp;
+
+			var k = adjustKey(event.key);
+
+			var d = 1;#math.min(dispCols // 5, dispRows // 5);
+
+			var slots = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "8": 7, "9": 8, "0": 9 };
+
+			var offs = {ArrowLeft:  [-d,  0],
+						ArrowUp:    [ 0, -d],
+						ArrowRight: [ d,  0], 
+						ArrowDown:  [ 0,  d]};
+
+			if slots.has(k) then
+				inventory.selectSlot(slots[k]);
+			else if offs.has(k) then
+			{
+				var off = offs[k];
+				scroll(off[0], off[1]);
+			}
+			else if k == "+" then
+			{
+				dispScale *= 2;
+				gui.guiScale *= 2;
+				initScale();
+				markCompletelyDirtyScreen();
+			}		
+			else if k == "-" then
+			{
+				dispScale = math.max(dispScale//2, 8);
+				gui.guiScale = math.max(gui.guiScale//2, 16);
+				initScale();
+				markCompletelyDirtyScreen();
+			}		
+			else if debug and k == "r" then # debug
+			{
+				markCompletelyDirtyScreen();
+
+				#inventory.hotbarDirty = true;
+			}
+			else if debug and k == "p" then # debug
+				debugRender = not debugRender;
+			else if debug and k == "c" then # debug
+			{
+				canvas.setFillColor(0, 0, 0);
+				canvas.clear();
+			}
+			else if pressedKeys.has(k) then
+			{
+				pressedKeys[k] = true;
+			}
+			#else
+			#	print(k);
+		}
+		else
+		{
+			gui.current.onKeyDown(event);
+		}
+		
+	});
+
+
+	setEventHandler("canvas.keyup", function(event)
+	{
+		var k = adjustKey(event.key);
+		
+		if pressedKeys.has(k) then
+		{
+			pressedKeys[k] = false;
+		}
+		
+		if gui.current != null then
+		{
+			gui.current.onKeyUp(event);	
+		}
+		
+		if k == "F1" then printHelp();
+		else if k == "o" then
+		{
+			if gui.current == null then
+				gui.setModal(gui.GuiSettings());
+		}
+		else if k == "e" then
+		{
+			if gui.current == null then
+				gui.setModal(gui.GuiInventory(
+					inventory.slots, 
+					inventory.hotbarSize, 
+					inventory.backpackSize
+				));
+			else if Type(gui.current) == gui.GuiInventory then
+				gui.closeModal();
+		}
+		else if k == "Escape" then
+		{
+			if gui.current == null then
+				gui.setModal(gamemenu.GuiGameMenu());
+			else
+				gui.closeModal();
+		}
+	});
+
+
+
+
+	setEventHandler("canvas.resize", function(event)
+	{
+		initScale();
+		markCompletelyDirtyScreen();
+		if gui.current != null then
+			gui.markScreenDirty();
+	});
+
+
+	
+	
+	setEventHandler("timer", function(event)
+	{
+		if gui.current != null then
+		{
+			gui.current.onTimer(event);
+		}
+		else
+		{
+			util.timeit(worldTick);
+			util.timeit(controlTick);
+		}
+		
+		# render
+		if gui.current != null then
+		{
+			
+			renderDebugDiff();
+			if gui.backDirty then
+			{
+				markCompletelyDirtyScreen();
+				util.timeit(render);
+				gui.drawModalDisable();
+			}
+				
+			gui.current.render(gui.backDirty or gui.modalDirty);
+			gui.backDirty = false;
+			gui.modalDirty = false;
+		}
+		else
+		{
+			util.timeit(render);
+		}
+	});
+}
+# namespace eventHandlers
+

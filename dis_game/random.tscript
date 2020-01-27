@@ -1,0 +1,39 @@
+
+namespace random
+{
+	class XorShift	
+	{
+		# SEE https://en.wikipedia.org/wiki/Xorshift
+	public:
+		var a;
+		
+		constructor(a)
+		{
+			if Type(a) != Integer then error("Expected integral seed");
+			this.a = a;
+		}
+		
+		function random32()
+		{
+			# Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs"
+			a = a xor a  * 2^13;
+			a = a xor a // 2^17;
+			a = a xor a  * 2^5;
+			return a;
+		}
+		
+		function random()
+		{
+			return random32() / 2.0^32 + 0.5;
+		}
+	}
+}
+# namespace random
+
+
+
+
+
+
+
+

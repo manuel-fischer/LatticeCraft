@@ -1,0 +1,1113 @@
+#[section] fwd
+
+#namespace worldCB
+#{
+#	var setBlockFWD;
+#	var setBlockUpdateFWD;
+#}
+namespace theWorldCB
+{
+	var isDirtyCB; # world coords
+	var markDirtyCB;
+	var unmarkEntityDirtyCB;
+}
+var theWorld;
+var thePlayer;
+
+#[section] main
+namespace world
+{
+	namespace chunkUtil
+	{
+		function forEachBlock(chunk, x0, y0, x1, y1, xOff, yOff, func, shift)
+		{
+			shift(x0, y0);
+			var stride = 16 + x0 - x1;
+			var xback = -16+stride;
+			var i = x0 + 16*y0;
+			var rx = x0+xOff:x1+xOff, ry = y0+yOff:y1+yOff;
+			for var y in ry do
+			{
+				for var x in rx	do
+				{
+					func(chunk[i], x, y);
+					i += 1;
+					shift(1, 0);
+				}
+				i += stride;
+				shift(xback, 1);
+			}
+			shift(-x0, -y1);
+		}
+		
+		function hasChanged(world, x, y, chunk)
+		{
+			# more like a hack, regenerate chunk and check if different
+			var c = world.chunkGenerator.generateChunk(x, y);
+			return c.blocks != chunk.blocks;
+		}
+	}
+	
+	# TODO make world specific
+	namespace worldUtil
+	{
+		function hasSolidBlock(rx, ry)
+		{
+			for var y in ry do
+			for var x in rx do
+				if theWorld.getBlock(x, y).solid then return true;
+				
+			return false;
+		}
+		
+		function boxesIntersecting(a, b)
+		{
+			return a[0] < b[2] and a[2] > b[0]
+							   and
+				   a[1] < b[3] and a[3] > b[1];
+		}
+	}
+}
+
+
+# TODO move to chunks
+#var allEntities = []; # REMOVE
+
+namespace world
+{
+
+	class Chunk
+	{
+	public:
+		var blocks;
+		
+		constructor(block_or_blocks)
+		{
+			if Type(block_or_blocks) == Array then blocks = block_or_blocks;
+			else blocks = Array(16*16, block_or_blocks);
+		}
+	}
+
+	namespace generators
+	{
+		# simple chunk generator, that generates air above y=0 (for y<0)
+		# otherwise stone
+		class BaseChunkGenerator
+		{
+		public:
+			var seed;
+			
+			constructor(seed) { this.seed = seed; }
+			
+			function chunkRandom(cx, cy, param=0)
+			{	
+				var r = seed + 10111*cx + 10427*cy + 574893*param;
+				r = r xor 123456789;
+				if r == 0 then r = seed*123;
+				return random.XorShift(r);
+			}
+
+			function generateChunk(x, y) {					
+				var block = blocks.air;
+				if y >= 0 then block = blocks.stone;
+				return Chunk(block);
+			}
+		}
+		
+		class Landscape : BaseChunkGenerator
+		{
+		public:
+			constructor(seed) : super(seed) {}
+			
+			function generateChunk(x, y)
+			{
+				var chunk = super.generateChunk(x, y);
+				var chunkData = chunk.blocks;
+				# change chunk contents
+				
+				#if debChunkGen then print("generateChunk("+x+", "+y+") x="+x*16+", y="+y*16);
+				
+				var rng  = chunkRandom(x,   y, 0);
+				var rngR = chunkRandom(x+1, y, 0); 
+				
+				# generate terrain
+				
+				if y == -1 then # TODO trees
+				{	
+					var r0 = rng.random();
+					var r1 = rngR.random();
+					
+					var rr = Array(17, 0);
+					rr[0] = r0; rr[16] = r1;
+					
+					var pop = function[rr, rng](a, b, mul)
+					{
+						var h = (a+b) // 2;
+						if b - a == 2 then
+						{
+							rr[h] = (rr[a] + rr[b]) /2;
+						}
+						else
+						{
+							var h = (a+b) // 2;
+							var m = (h/16)*(1-mul) + (rng.random())*mul;
+							rr[h] = math.min(rr[a]*(1-m) + rr[b]*m + rng.random()*mul*0.2, 1);
+
+							this(a, h, mul*0.85); this(h, b, mul*0.85);
+						}
+					};
+					pop(0, 16, 0.75);
+					
+					for x in 0:16 do
+					{
+						var yy = Integer(rr[x]*15);
+						var b = blocks.grass;
+						for y in yy:16 do
+						{
+							chunkData[x + y*16] = b;
+							b = blocks.dirt;
+							if rng.random() < (2*y-yy)/(16+8) then
+								b = blocks.stone;
+						}
+					}
+				}
+				
+				return chunk;
+			}
+		}
+	
+		# adds plants and ores to the landscape
+		class PopulatedLandscape : Landscape
+		{
+		public:
+			constructor(seed) : super(seed) {}
+			function generateChunk(x, y)
+			{
+				var chunk = super.generateChunk(x, y);
+				var chunkData = chunk.blocks;
+				
+				# change chunk contents
+				var rng  = chunkRandom(x,   y, 1);
+				if y >= 0 then
+				{
+					if y % 5 == 1 then
+						for y in  1: 3 do
+						for x in  0:16 do
+							chunkData[x + y*16] = blocks.coalOre;
+
+					var yy = y % 3 + 3;
+					for y in  0:16 do
+					for x in  0:16 do
+					{
+						var chance = (y % yy) * (0.7/4) + 0.01;
+						if rng.random() < chance then chunkData[x + y*16] = blocks.coalOre;
+					}
+				}
+				else if y == -1 then
+				{
+					for var i in 0:Integer(rng.random()*12) do
+					{
+						var x = Integer(rng.random() * 16);
+						for var y in 0:15 do
+						{
+							var curblock = chunkData[x + y*16];
+							if curblock == blocks.grass then if y >= 1 then
+							{
+								var yi = y-1;
+								
+								chunkData[x + yi*16] = blocks.sapling;
+
+								if rng.random() < 0.9 then do
+								{
+									yi -= 1; if yi < 0 then break;
+									chunkData[x + yi*16] = blocks.leaves;
+								}
+								while rng.random() < 0.3;
+								break;
+							}
+							
+							if curblock != blocks.air then break;
+						}
+					}
+				}
+				return chunk;
+			}
+		}
+	}
+
+	# BaseWorld, only implements the base data structure
+	class BaseWorld
+	{
+	public:
+		var chunkGenerator;
+		var chunks;
+		var lastChunkX, lastChunkY, lastChunk;
+		var entities; # move to chunks, also contains players
+		var players; # do not move to chunks
+		#var onBlockChanged;# callback function(x, y)
+		
+		constructor(chunkGenerator, chunks) {
+			this.chunkGenerator = chunkGenerator; this.chunks = chunks;
+			#this.onBlockChanged = function(x, y) {};
+			this.entities = [];
+			this.players = [];
+		}
+		
+		function getChunkData(cx, cy)
+		{	
+			if lastChunkX == cx and lastChunkY == cy then return lastChunk.blocks;
+		
+			lastChunkX = cx; lastChunkY = cy;
+			
+			var chunkid = cx + "," + cy;
+			if chunks.has(chunkid) then
+				lastChunk = chunks[chunkid];
+			else
+			{
+				lastChunk = chunkGenerator.generateChunk(cx, cy);
+				chunks[chunkid] = lastChunk;
+			}
+			return lastChunk.blocks;
+		}
+		
+		function setBlock(x, y, block)
+		{
+			getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)] = block;
+			#onBlockChanged(x, y);
+			theWorldCB.markDirtyCB(x, y);
+		}
+		
+		function getBlock(x, y)
+		{
+			return getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)];
+		}
+		
+		function refBlock(x, y)
+		{
+			var chunkData = getChunkData(x // 16, y // 16);
+			var chunkLoc = (x%16)+16*(y%16);
+			return [chunkData, chunkLoc];
+		}
+		
+	}
+	# class BaseWorld
+	
+	
+	# class that implements behavior ontop of the BaseWorld class
+	class World : BaseWorld
+	{
+	public:
+		var blockUpdates = {};
+
+		constructor(chunkGenerator, chunks): super(chunkGenerator, chunks) {}
+	
+		function update(x, y)
+		{
+			var blockUpdate = getBlock(x, y).update;
+			if blockUpdate != null then
+				blockUpdates[x+","+y] = function[blockUpdate, x, y]() { blockUpdate(x, y); };
+			else
+				blockUpdates.remove(x+","+y);
+		}
+		function updateNeighbors(x, y)
+		{
+							update(x, y-1);
+			update(x-1, y);	update(x, y+0); update(x+1, y);
+							update(x, y+1);	
+		}
+		
+		function setBlockUpdate(x, y, block)
+		{
+			setBlock(x, y, block);
+			updateNeighbors(x, y);	
+		}
+		
+		function tick()
+		{
+			# random block ticks
+			#var tickRadius = 20;
+			# Update blocks around each player
+			for var player in players do
+			for var i in 0:randomTickSpeed do
+			{
+				var rx = Integer(math.random()*(2*randomTickRadius+1) - randomTickRadius);
+				var ry = Integer(math.random()*(2*randomTickRadius+1) - randomTickRadius);
+				var x = Integer(player.x) + rx;
+				var y = Integer(player.y) + ry;
+				getBlock(x, y).tick(x, y);
+				if debugRender and debugTick then
+					theWorldCB.markDirtyCB(x, y); # just for visualizing
+			}
+
+			var bu = blockUpdates.values();
+			blockUpdates = {};
+			for var update in bu do update();
+
+			for var e in entities do e.tick();
+
+			var toKill = [];
+
+			var sz = entities.size();
+			for var i in 0:sz do
+			for var j in i+1:sz do
+			{
+				var d = entities[i];
+				var e = entities[j];
+
+				if world.worldUtil.boxesIntersecting(d.getAbsBox(), e.getAbsBox()) then
+				{
+					entityBehavior.onEntityCollision(d, e);
+					entityBehavior.onEntityCollision(e, d);
+				}
+			}
+
+
+			# remove entities
+			var toDelete = [];
+			for var i in entities.keys() do 
+			{
+				var e = entities[i];
+				if e.dead then
+				{			
+					e.markBackgroundDirty();
+					theWorldCB.unmarkEntityDirtyCB(e);
+					#entityDisp.unmarkDirty(e); # do not rerender this entity
+
+					toDelete.push(i-toDelete.size());
+				}
+			}
+
+			for var i in toDelete do
+				entities.remove(i);
+			# end remove entities
+		}
+	}
+	# class World
+	
+	function randomWorld()
+	{
+		var seed = Integer(time()*123456789); # shouldn't be zero
+		var chunkGenerator = world.generators.PopulatedLandscape(seed);
+		return World(chunkGenerator, {});
+	}
+}
+
+
+
+#### BEGIN DELETION SECTION ####
+## namespace theWorld_
+## {
+## 	# A chunk [Blocks... (16*16)]
+## 	# the entities should be stored in a quadtree
+## 	
+## 	function chunkLoc(x, y)
+## 	{
+## 		return x+y*16;
+## 	}
+## 	
+## 	function makeChunk(block=null)
+## 	{
+## 		if block == null then block = blocks.air;
+## 		return Array(16*16, block);
+## 	}
+## 	
+## 	
+## 	function chunkRandom(cx, cy)
+## 	{	
+## 		var r = worldSeed + 10111*cx + 10427*cy;
+## 		r = r xor 123456789;
+## 		if r == 0 then r = worldSeed*123;
+## 		return random.XorShift(r);
+## 	}
+## 	
+## 	# generates base terrain, no structures (this is done by populateChunk
+## 	function generateChunk(x, y)
+## 	{
+## 		if debChunkGen then print("generateChunk("+x+", "+y+") x="+x*16+", y="+y*16);
+## 		
+## 		var rng  = chunkRandom(x,   y);
+## 		var rngR = chunkRandom(x+1, y); 
+## 		
+## 		var block = blocks.air;
+## 		if y >= 0 then block = blocks.stone;
+## 		var chunk = makeChunk(block);
+## 		
+## 		# generate terrain
+## 		
+## 		if y == -1 then # trees
+## 		{	
+## 			var r0 = rng.random();
+## 			var r1 = rngR.random();
+## 			
+## 			var rr = Array(17, 0);
+## 			rr[0] = r0; rr[16] = r1;
+## 			
+## 			var pop = function[rr, rng](a, b, mul)
+## 			{
+## 				var h = (a+b) // 2;
+## 				if b - a == 2 then
+## 				{
+## 					rr[h] = (rr[a] + rr[b]) /2;
+## 				}
+## 				else
+## 				{
+## 					var h = (a+b) // 2;
+## 					var m = (h/16)*(1-mul) + (rng.random())*mul;
+## 					rr[h] = math.min(rr[a]*(1-m) + rr[b]*m + rng.random()*mul*0.2, 1);
+## 
+## 					this(a, h, mul*0.85); this(h, b, mul*0.85);
+## 				}
+## 			};
+## 			pop(0, 16, 0.75);
+## 			
+## 			for x in 0:16 do
+## 			{
+## 				var yy = Integer(rr[x]*15);
+## 				var b = blocks.grass;
+## 				for y in yy:16 do
+## 				{
+## 					chunk[chunkLoc(x, y)] = b;
+## 					b = blocks.dirt;
+## 					if rng.random() < (2*y-yy)/(16+8) then
+## 						b = blocks.stone;
+## 				}
+## 			}
+## 		}
+## 		else if y >= 0 then
+## 		{
+## 			if y % 5 == 1 then
+## 				for y in  1: 3 do
+## 				for x in  0:16 do
+## 					chunk[chunkLoc(x, y)] = blocks.coalOre;
+## 
+## 			var yy = y % 3 + 3;
+## 			for y in  0:16 do
+## 			for x in  0:16 do
+## 			{
+## 				var chance = (y % yy) * (0.7/4) + 0.01;
+## 				if rng.random() < chance then chunk[chunkLoc(x, y)] = blocks.coalOre;
+## 			}
+## 		}
+## 		
+## 		return chunk;
+## 	}
+## 	
+## 	var chunks = {};
+## 	# chunk position is x // 16, y // 16
+## 	namespace getChunk_impl { var lastcx, lastcy, lastChunk; }
+## 	function getChunk(cx, cy)
+## 	{
+## 		use namespace getChunk_impl;
+## 		
+## 		if lastcx == cx and lastcy == cy then return lastChunk;
+## 		
+## 		lastcx = cx; lastcy = cy;
+## 		
+## 		var chunkid = cx + "," + cy;
+## 		if chunks.has(chunkid) then
+## 			lastChunk = chunks[chunkid];
+## 		else
+## 		{
+## 			lastChunk = generateChunk(cx, cy);
+## 			chunks[chunkid] = lastChunk;
+## 		}
+## 		return lastChunk;
+## 	}
+## 	
+## 	var markDirtyCB;
+## 	var isDirtyCB;
+## 	
+## 	function setBlock(x, y, block)
+## 	{
+## 		var chunk = getChunkData(x // 16, y // 16);
+## 		chunk[chunkLoc(x%16, y%16)] = block;
+## 		markDirtyCB(x, y);
+## 	}
+## 	#setBlockFWD = setBlock;
+## 	
+## 	# gibt (blocks.air) zurück, falls block außerhalb des baubereichs
+## 	function getBlock(x, y)
+## 	{
+## 		var chunk = getChunkData(x // 16, y // 16);
+## 		return chunk[chunkLoc(x%16, y%16)];
+## 	}
+## 	
+## 	var blockUpdates = {};
+## 	function update(x, y)
+## 	{
+## 		var blockUpdate = getBlock(x, y).update;
+## 		if blockUpdate != null then
+## 			blockUpdates[x+","+y] = function[blockUpdate, x, y]() { blockUpdate(x, y); };
+## 		else
+## 			blockUpdates.remove(x+","+y);
+## 	}
+## 	function updateNeighbors(x, y)
+## 	{
+## 		                update(x, y-1);
+## 		update(x-1, y);	update(x, y+0); update(x+1, y);
+## 		                update(x, y+1);	
+## 	}
+## 	
+## 	function setBlockUpdate(x, y, block)
+## 	{
+## 		setBlock(x, y, block);
+## 		updateNeighbors(x, y);	
+## 	}
+## 	
+## 	#setBlockUpdateFWD = setBlockUpdate;
+## 	
+## 	function hasSolidBlock(rx, ry)
+## 	{
+## 		for var y in ry do
+## 		for var x in rx do
+## 			if theWorld.getBlock(x, y).solid then return true;
+## 			
+## 		return false;
+## 	}
+## }
+## # namespace world
+
+
+
+# TODO move function somewhere else
+## function hasSolidBlock(rx, ry)
+## {
+## 	for var y in ry do
+## 	for var x in rx do
+## 		if world.getBlock(x, y).solid then return true;
+## 		
+## 	return false;
+## }
+
+
+
+
+
+
+#[section] disp
+
+namespace dispWorld
+{
+	use namespace disp;
+		
+	var allDirty = true;
+	var screenChanged = true;
+	var dirtyBlocks = {};
+	var visBlocks; # blocks visible on the screen
+	
+	var mul = 2^13;
+	var mulMsk = mul-1;
+	
+	var markDirtyGuiCB;
+	
+	var ttX, ttY;
+	function resetRender()
+	{
+		ttX = 0; ttY = 0;		
+	}
+	
+	# render block and place block into the array
+	function renderBlockPlace(x, y) # screen coords
+	{
+		var b = theWorld.getBlock(x+offX, y+offY);
+		
+		canvas.shift(x-ttX, y-ttY);
+		ttX = x; ttY = y;
+		b.render();
+		
+		visBlocks[x+y*dispCols] = b;
+	}
+	
+	# similar to renderBlockPlace but do not rerender if there is the same block
+	function renderBlockPlaceUpdate(x, y)
+	{
+		var b = theWorld.getBlock(x+offX, y+offY);
+		if visBlocks[x+y*dispCols] != b then
+		{
+			canvas.shift(x-ttX, y-ttY);
+			ttX = x; ttY = y;
+			b.render();
+			
+			visBlocks[x+y*dispCols] = b;	
+			markDirtyGuiCB(x, y);
+		}
+	}
+	
+	
+	function markDirty(x, y) # screen coords
+	{
+		if not allDirty then
+		if x >= 0 then if x < dispCols then
+		if y >= 0 then if y < dispRows then
+		{
+			# schneller, direkt auszuführende Aktion in Anonyme funktion packen
+			dirtyBlocks[String(x+y*mul)] = function[x, y](){ renderBlockPlace(x, y); };
+			markDirtyGuiCB(x, y);
+		}	
+	}
+	
+	function markDirtyAt(x, y) # world coords
+	{
+		markDirty(x-offX, y-offY);		
+	}
+		
+	function isDirty(x, y) # screen coords
+	{
+		return dirtyBlocks.has(String(x+y*mul));
+	}
+	
+	function isDirtyAt(x, y) # world coords
+	{
+		#return isDirty(x-offX, y-offY);		
+		return dirtyBlocks.has(String((x-offX)+(y-offY)*mul));
+	}
+	
+	# force blocks to be rerendered if nessecary
+	function markCompletelyDirty()
+	{
+		allDirty = true;
+	}
+	
+	# force everything to be rerendered
+	function markCompletelyDirtyScreen()
+	{
+		markCompletelyDirty();
+		dirtyBlocks = {}; # everything rendered anyway
+		dispWorld.screenChanged = true;
+		visBlocks = Array(dispCols*dispRows, null);
+	}
+	
+	theWorldCB.markDirtyCB = markDirtyAt;
+	theWorldCB.isDirtyCB   = isDirtyAt;
+	
+	namespace chunkVars
+	{
+		var rcx, rcy; # range of visible chunks by chunk pos (x//16, y//16)
+		var dispChunks; # visible chunks
+		var chunkOffX, chunkOffY; # offset of the first chunk to the lefttop corner (always <= 0)
+		var chunkStride; # Distance to shift back to the left, always <= 0
+		
+		var chunkRW, chunkBH; # the width/height of the rightmost/bottommost chunk
+	}
+	
+	function updateChunkVars()
+	{
+		use namespace chunkVars;
+		rcx = offX//16:(offX+dispCols+15)//16;
+		rcy = offY//16:(offY+dispRows+15)//16;
+		dispChunks = [];
+		
+		chunkOffX = rcx.begin() * 16 - offX;
+		chunkOffY = rcy.begin() * 16 - offY;
+		chunkRW = 16-(rcx.end() * 16 - offX - dispCols);
+		chunkBH = 16-(rcy.end() * 16 - offY - dispRows);
+		
+		chunkStride = rcx.size() * -16;
+		
+		for var cy in rcy do
+		for var cx in rcx do
+		{
+			dispChunks.push(theWorld.getChunkData(cx, cy));
+		}
+	}
+	
+	function renderWorld()
+	{
+		canvas.reset();
+		canvas.scale(dispScale);
+		
+		if dynScroll then 
+		{
+			canvas.shift(-offXD, -offYD); # dynrender
+			allDirty = true;
+			screenChanged = true;
+		}
+		
+		if(allDirty) then
+		{
+			updateChunkVars();
+			
+			var t = time();
+			
+			var blockFunc, blockFunc2;
+			if screenChanged then
+			{
+				blockFunc = function(b, x, y)
+				{
+					b.render();
+					visBlocks[x+(y)*dispCols] = b;
+				};
+				
+				screenChanged = false;
+				# no need for gui update, always gets updated
+				
+				blockFunc2 = blockFunc;
+			}
+			else
+			{
+				blockFunc = function(b, x, y)
+				{
+					var indx = x+(y)*dispCols;
+					if visBlocks[indx] != b then 
+					{
+						b.render();
+						visBlocks[indx] = b;
+					}
+				};
+				blockFunc2 = function(b, x, y)
+				{
+					var indx = x+(y)*dispCols;
+					if visBlocks[indx] != b then 
+					{
+						b.render();
+						visBlocks[indx] = b;	
+						markDirtyGuiCB(x, y);
+					}
+				};
+				
+				blockFunc = blockFunc2; # move assignment-statement to last row of chunks
+			}
+			
+			
+			var i = 0;
+			use namespace chunkVars;
+			canvas.shift(chunkOffX, chunkOffY);
+
+			var ex = rcx.end()-1, ey = rcy.end()-1;
+
+			var lly = -chunkOffY;
+			var rry = 16;
+
+			var cyy = chunkOffY;
+
+			for var cy in rcy do
+			{
+				if cy == ey then rry = chunkBH;
+
+				var llx = -chunkOffX;
+				var rrx = 16;
+
+				var cxx = chunkOffX;
+
+				for var cx in rcx do
+				{
+					if cx == ex then rrx = chunkRW;
+
+					world.chunkUtil.forEachBlock(
+						dispChunks[i], llx, lly, rrx, rry, cxx, cyy,
+						blockFunc,
+						canvas.shift
+					);
+
+					# doChunk shifts 16 down
+					llx = 0;
+					cxx += 16;
+					canvas.shift(16, 0);
+					i+=1;
+				}
+
+				lly = 0;
+				cyy += 16;
+				canvas.shift(chunkStride, 16);
+			}
+			canvas.reset();
+			canvas.scale(dispScale);
+
+
+			allDirty = false;
+			
+			#print("Rendering screen took " + (time()-t) + " ms");
+		}
+		
+		resetRender();
+		for var db in dirtyBlocks.values() do db();
+
+		dirtyBlocks = {};
+		
+		
+		
+		if showChunkBorders then
+		{	
+			canvas.reset();
+		
+			for var cy in chunkVars.rcy do
+			for var cx in chunkVars.rcx do
+			{
+				canvas.rect((cx*16-offX)*dispScale, (cy*16-offY)*dispScale, 16*dispScale, 16*dispScale);
+			}
+		}
+	}
+	# function renderWorld
+	
+}
+# namespace worldDisp
+
+
+
+
+
+
+
+
+#[section] tick
+namespace entityBehavior
+{
+	registerCollision(entities.EntityPlayer, entities.EntityItem, function(p, i)
+		{
+			i.dead = true;
+		}
+	);
+}
+
+#function onEntityCollision(d, e)
+#{
+#	if Type(d) == entities.EntityPlayer and Type(e) == entities.EntityItem then
+#	{
+#		e.dead = true;	
+#	}		
+#}
+
+
+function worldTick()
+{
+	theWorld.tick();		
+		
+	updatePlayerScroll();
+		
+}
+# function worldTick
+
+
+#[section] serialization
+namespace world
+{
+	function serializeChunk(chunk)
+	{
+		var chunkData = chunk.blocks;
+		
+		# RLE encoding
+		var str = "";
+		var lastChar = ""; var lastCharCount = 0;
+		for var b in chunkData do
+		{
+			var thisChar = b.char;
+			if thisChar != lastChar then
+			{
+				if lastCharCount > 1 then str += String(lastCharCount);
+				str += lastChar;
+				
+				lastChar = thisChar;
+				lastCharCount = 1;
+			}
+			else
+				lastCharCount += 1;
+		}
+		if lastCharCount > 1 then str += String(lastCharCount);
+		str += lastChar;
+		
+		return str;
+	}
+	function deserializeChunk(sChunkData)
+	{
+		var data = [];
+		var count = 0;
+		for var c in sChunkData.split("") do
+		{
+			if "0" <= c and c <= "9" then
+			{
+				count = count*10 + (c[0] and 15);
+			}
+			else
+			{
+				count = math.max(1, count);
+				if not blocks.blockMapping.has(c) then
+					error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
+					
+				var block = blocks.blockMapping[c];
+				data = Array.concat(data, Array(count, block));
+				count = 0;
+			}
+		}
+		
+		if data.size() != 256 then error("World data has been corrupted"); # TODO handle?
+		return world.Chunk(data);
+	}
+	
+	function serializeInventory(slots)
+	{
+		var str = "";
+		var emptyCount = 0;
+		for var s in slots do
+		{
+			if s == null then
+			{
+				emptyCount += 1;
+			}
+			else
+			{
+				if emptyCount != 0 then
+				{
+					if emptyCount != 1 then str += emptyCount;
+					str += " ";	
+					emptyCount = 0;
+				}
+				if s.amount != 1 then str += s.amount;
+				str += s.item.char;
+			}
+		}
+		if emptyCount != 0 then
+		{
+			str += emptyCount + " ";	
+		}
+		
+		return str;
+	}
+	
+	function deserializeInventory(jsonString)
+	{
+		var slots = [];
+		var count = 0;
+		for var c in jsonString.split("") do
+		{
+			if "0" <= c and c <= "9" then
+			{
+				count = count*10 + (c[0] and 15);
+			}
+			else
+			{
+				count = math.max(1, count);
+				if c == " " then
+				{
+					slots = Array.concat(slots, Array(count, null));
+				}
+				else
+				{
+					if not blocks.blockMapping.has(c) then
+						error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
+					
+					var stack = inventory.ItemStack(count, blocks.blockMapping[c]);
+					slots.push(stack);
+				}
+				count = 0;	
+			}
+		}
+		return slots;
+	}
+	
+	function serializePlayer(player)
+	{
+		return {
+			"x": player.x, "y": player.y,
+			"inventory": serializeInventory(player.inventorySlots)
+		};
+	}
+	
+	function deserializePlayer(json)
+	{
+		var p;
+		if Type(json) == Array then
+			# old, deprecated, to be removed
+			p = entities.EntityPlayer(json[0], json[0]);
+		else
+		{
+			p = entities.EntityPlayer(json["x"], json["y"]);
+			p.inventorySlots = deserializeInventory(json["inventory"]);
+		}
+			
+		# velocity?
+		return p;
+	}
+	
+	function serializeWorld(w)
+	{
+		print("serializing world...");
+		var sChunks = {};
+		if settings.storeChangedChunksOnly then
+		{	
+			for var k in w.chunks.keys() do
+			{
+				var pos = util.splitPos(k);
+				if chunkUtil.hasChanged(w, pos[0], pos[1], w.chunks[k]) then
+					sChunks[k] = serializeChunk(w.chunks[k]);
+			}
+		}
+		else
+			for var k in w.chunks.keys() do	sChunks[k] = serializeChunk(w.chunks[k]);
+		
+		var serialized = {
+			"version": 0,
+			"seed": w.chunkGenerator.seed,
+			"chunks": sChunks,
+			"player": serializePlayer(w.players[0]) # save velocity?
+		};
+		print("serialization finished");
+		print(util.jsonToString(serialized));
+		return serialized;
+	}
+	
+	# changes global state
+	function deserializeWorld(worldData)
+	{
+		print("deserializing world...");
+		
+		if worldData["version"] != 0 then error("World version not supported");
+		
+		#var gen = {
+		#	flat: world.generators.BaseGenerator,#
+		#	#...
+		#}[worldData["generator"]];
+		var worldSeed = Integer(worldData["seed"]);
+		var generator = world.generators.PopulatedLandscape(worldSeed);
+		
+		var sChunks = worldData["chunks"];
+		var chunks = {};
+		for var k in sChunks.keys() do
+		{
+			chunks[k] = deserializeChunk(sChunks[k]);
+		}
+		
+		# TODO move player to entity array
+		var player = deserializePlayer(worldData["player"]);
+		
+		var w = world.World(generator, chunks);
+		w.entities.push(player);
+		w.players.push(player);
+		print("deserialization finished");
+		return w;
+	}
+	
+	
+	# TODO move elsewhere
+	function bindPlayer(p)
+	{
+		thePlayer = p;
+		theWorld.entities.push(thePlayer);
+		theWorld.players.push(thePlayer);
+		inventory.bindEntityInventory(thePlayer);
+		scrollTo(p.x, p.y);
+	}
+	
+	# binds world and the first player
+	function bindWorldWithPlayer(w)
+	{
+		theWorld = w;	
+		bindPlayer(w.players[0]);
+	}
+	
+	function bindNewWorld()
+	{
+		var p = entities.EntityPlayer(0, -16);
+		{
+			p.collectItem(blocks.sapling);
+			p.collectItem(blocks.planks, 999);
+			p.collectItem(blocks.bricks, 999);
+
+			#p.collectItem(blocks.water, 69);
+
+			#p.collectItem(blocks.sand, 420);
+		}
+
+		theWorld = world.randomWorld();
+		world.bindPlayer(p);	
+	}
+}

@@ -1,0 +1,156 @@
+#[section] fwd
+
+var mouseX, mouseY, mouseInside = false;
+var selX, selY;
+
+var pressedKeys = {
+	"w": false,
+	"a": false, "d": false,
+};
+
+
+
+
+#[section] main
+
+namespace mouseModes
+{
+	var place = 0,
+		destroy = 1,
+		hotbar = 2;
+}
+
+var mouseTime;
+var mouseMode;
+
+function userAction(x, y)
+{
+	#if x == null then { print("x"); return; }
+	
+	if mouseMode == mouseModes.destroy then
+	{
+		var b = theWorld.getBlock(x, y);
+		var drop = b.drop;
+		if drop != null then
+		{
+			if b.dropChance == 1.0 or math.random() < b.dropChance then
+			{
+				thePlayer.collectItem(drop);
+				#inventory.collect(drop);
+			}
+		}
+		theWorld.setBlockUpdate(x, y, blocks.air);
+	}
+	else if mouseMode == mouseModes.place then
+		if inventory.currentItem != null then
+		if theWorld.getBlock(x, y) == blocks.air then
+		{
+			if inventory.currentItem.place(x, y) then
+				inventory.useCurrent();
+				
+			#theWorld.setBlock(x, y, inventory.currentBlock);
+			#inventory.useCurrent();
+		}
+}
+# function userAction
+
+
+
+
+var destroyTime = 250; # ms
+function mouseTick()
+{
+	if mouseTime != null and mouseMode == null then
+	{
+		if time() - mouseTime > destroyTime then
+		{
+			mouseMode = mouseModes.destroy;
+			userAction(selX, selY);
+		}
+	}
+}
+
+
+function mouseTrig()
+{
+	if mouseTime != null and mouseMode == null then
+	{
+		if time() - mouseTime > destroyTime then
+			mouseMode = mouseModes.destroy;
+		else
+			mouseMode = mouseModes.place;
+
+		userAction(selX, selY);
+	}
+}
+
+function keyboardTick()
+{
+	use namespace math; # min, max
+
+	#var stepAcc = 0.07, stepDec = 0.15;
+	var stepAcc = 0.1, stepDec = 0.3;
+	if not thePlayer.isOnGround then stepDec = 0.07;
+	var velXMax = 2;
+	var movX = thePlayer.movX;
+	thePlayer.movY = 0;
+	
+	
+	var movXSgn = 0;
+	
+	if pressedKeys["a"] then movXSgn -= 1;
+	if pressedKeys["d"] then movXSgn += 1;
+	if pressedKeys["w"] then thePlayer.movY -= 1;
+	
+	if movXSgn == 0 then
+	{
+		if      movX < 0 then movX = min(movX+stepDec, 0);
+		else if movX > 0 then movX = max(movX-stepDec, 0);
+	}
+	else
+	{
+		movX = min(max(-velXMax, movX+stepAcc*movXSgn), velXMax);
+	}
+	
+	thePlayer.movX = movX;
+	
+}
+
+
+function controlTick()
+{
+	mouseTick();
+	keyboardTick();
+}
+
+
+function updateXY(event)
+{
+	use namespace disp;
+	
+	mouseInside = true;
+	
+ 	mouseX = event.x; mouseY = event.y;
+	var nX, nY;
+	
+	if mouseMode == mouseModes.destroy or
+	   mouseMode == mouseModes.place or
+	   not inventory.isOnGui(mouseX, mouseY) then
+	{
+		nX = mouseX//dispScale+offX;
+		nY = mouseY//dispScale+offY;
+	} else {
+		# keep nX and nY null
+		#mouseMode = mouseModes.hotbar;	
+		;
+	}
+	
+	if nX != selX or nY != selY then
+	{
+		mouseTrig();
+		if selX != null then theWorldCB.markDirtyCB(selX, selY);
+		selX = nX; selY = nY;	
+	}
+}
+
+

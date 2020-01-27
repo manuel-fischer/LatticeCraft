@@ -1,0 +1,415 @@
+#[section] behavior
+namespace entityBehavior
+{
+	var collisionBehavior = {};
+	
+	function registerCollision(a, b, f)
+	{
+		assert(Type(a) == Type);
+		assert(Type(b) == Type);
+		assert(Type(f) == Function);
+		collisionBehavior[a+","+b] = f;
+	}
+	
+	function onEntityCollision(a, b)
+	{
+		var eventsig = a+","+b;
+		if collisionBehavior.has(eventsig) then
+			collisionBehavior[eventsig](a, b);
+	}
+}
+
+
+
+
+#[section] disp
+
+namespace entityDisp
+{
+	var dirty = {};
+	
+	function markDirty(e)
+	{
+		dirty[String(e.id)] = e;
+	}
+	
+	function unmarkDirty(e)
+	{
+		dirty.remove(String(e.id));
+	}
+	theWorldCB.unmarkEntityDirtyCB = unmarkDirty;
+	
+	function markCompletelyDirty() {
+		for var e in theWorld.entities do markDirty(e);
+	}
+	var markCompletelyDirtyScreen = markCompletelyDirty;
+}
+# namespace entityDisp
+
+#[section] main
+
+namespace entities
+{
+	
+	function markRegionDirty(x0, y0, x1, y1)
+	{
+		# TODO do screenspace rather than world space
+		x0 = math.max(disp.offX, Integer( x0)); # round down
+		y0 = math.max(disp.offY, Integer( y0)); # round down
+		x1 = math.min(-Integer(-x1), disp.dispCols+disp.offX); # round up
+		y1 = math.min(-Integer(-y1), disp.dispRows+disp.offY); # round up
+
+		for var xx in x0:x1 do
+		for var yy in y0:y1 do
+		{
+			theWorldCB.markDirtyCB(xx, yy);
+		}
+	}
+	
+	function isRegionDirty(x0, y0, x1, y1)
+	{		
+		# TODO do screenspace rather than world space
+		x0 = math.max(disp.offX, Integer( x0)); # round down
+		y0 = math.max(disp.offY, Integer( y0)); # round down
+		x1 = math.min(-Integer(-x1), disp.dispCols+disp.offX); # round up
+		y1 = math.min(-Integer(-y1), disp.dispRows+disp.offY); # round up
+
+		for var xx in x0:x1 do
+		for var yy in y0:y1 do
+		{
+			if theWorldCB.isDirtyCB(xx, yy) then return true;
+		}
+		return false;
+	}
+	
+	class Entity
+	{
+	private:
+		static var counter = 0;
+	public:
+		var id;
+		var x, y; # Real, absolute position 
+				  # TODO: relative position to chunk corner?
+		var velY=0;
+		
+		var isOnGround = false; # set by tickPhysics
+				  
+		var bbox; # bounding box relative to x, y
+		
+		var dead = false; # set to true if entity should be removed
+				  
+		constructor(p_x, p_y, p_bbox) {
+			counter += 1;
+			id = counter;
+			x = p_x;
+			y = p_y;
+			bbox = p_bbox;
+		}
+		
+		# when the world is scrolled/the background is moved,
+		# this function gets called
+		# and call the function from tick to request rendering in the next frame,
+		# this should happen, when the entity is animated, has changed, or has transcluent parts
+		function markBackgroundDirty() {
+			markRegionDirty(x+bbox[0], y+bbox[1], x+bbox[2], y+bbox[3]);
+		}
+		
+		function isBackgroundDirty()
+		{
+			return isRegionDirty(x+bbox[0], y+bbox[1], x+bbox[2], y+bbox[3]);
+		}
+		
+		function getAbsBox() { return [x+bbox[0], y+bbox[1], x+bbox[2], y+bbox[3]]; }
+		
+		# todo when the background has changed
+		function render() {}
+		
+		function tickPhysics(dx=0, dy=0) 
+		{
+			var ox = x, oy = y;
+			var smashed=false; # currently unused
+			
+			{
+				x+=dx;
+				y+=dy;
+			}
+			{
+				var l = bbox[0], t = bbox[1], r = bbox[2], b = bbox[3];
+
+				var lx = x+l, rx = x+r;
+				var ilx = Integer(lx), irx = Integer(rx);
+
+				var ix = Integer(x), iy = Integer(y);
+				var iy0 = Integer(y-0.1);
+				var ity = Integer(y+t);
+
+				var ilx0 = Integer(lx+0.01), irx0 = Integer(rx-0.01);
+
+				var collidesLeft  = world.worldUtil.hasSolidBlock([ilx], ity:iy0+1);
+				var collidesRight = world.worldUtil.hasSolidBlock([irx], ity:iy0+1);
+
+				if collidesLeft and collidesRight then
+				{
+					smashed = true;
+				}
+				else if collidesLeft then
+				{
+					x = ilx+1 - l;
+				}
+				else if collidesRight then
+				{
+					x = irx - r - 0.01; # sub a bit, so that it does not keep touching
+				}
+				
+				# recalculating
+				ix = Integer(x);
+				lx = x+l; rx = x+r;
+				ilx = Integer(lx); irx = Integer(rx);
+				ilx0 = Integer(lx+0.01); irx0 = Integer(rx-0.01);
+
+
+				#if not world.getBlock(ix, iy).solid then
+				{
+					velY+=0.01;
+					y += velY;
+					
+					# recalculating
+					iy = Integer(y);
+					#iy0 = Integer(y-0.1);
+					ity = Integer(y+t);
+				}
+				
+				var collidesBottom = world.worldUtil.hasSolidBlock(ilx0:irx0+1, [iy]);
+				var collidesTop    = world.worldUtil.hasSolidBlock(ilx0:irx0+1, [ity]);
+				isOnGround = collidesBottom;
+				
+				if collidesBottom and collidesTop then
+				{
+					smashed = true;
+				}
+				else if collidesBottom then
+				{
+					y = iy;
+					velY = 0;
+				}
+				else if collidesTop then
+				{
+					y = ity+1-t;
+					#velY = -velY;
+					velY = 0;
+				}
+				
+				if smashed then y-=1;
+			}
+			var dirty = ox != x or oy != y;
+			if dirty then
+				markRegionDirty(ox+bbox[0], oy+bbox[1], ox+bbox[2], oy+bbox[3]);
+			
+			return dirty;
+		}
+		# function tickPhysics
+		
+		function tick() {}
+	}
+	# class Entity
+	
+	
+
+	
+	
+	class EntityItem : Entity
+	{
+	public:
+		var dirty = true;
+		var content;
+		var period; # for rendering
+		
+		constructor(p_x, p_y, p_content) : super(p_x, p_y, [-0.25, -0.5, 0.25, 0])
+		{
+			content = p_content;
+			period = math.random() * math.pi() * 2;
+		}
+		
+		function render()
+		{
+			use namespace disp;
+			canvas.reset();
+			canvas.scale(dispScale);
+			canvas.shift(x-offX-0.25, y-offY-0.5);
+			canvas.scale(0.5);
+			content.renderItem();
+		}
+		
+		function tick()
+		{
+			if super.tickPhysics() then
+				entityDisp.markDirty(this);
+		}
+	}
+	# class EntityItem
+	
+	
+	class EntityWithInventory : Entity
+	{
+	public:
+		var inventorySlots;
+		var onInventorySlotChanged; # function(slot)
+		constructor(p_x, p_y, p_bbox, inventorySlots=null) : super(p_x, p_y, p_bbox) 
+		{
+			this.inventorySlots = inventorySlots;
+			onInventorySlotChanged = function(i, item) {};
+		}
+		
+		function collectItem(item, amount=1)
+		{
+			# look for existing stacks with that same item
+			for var i in inventorySlots.keys() do
+			{
+				if inventorySlots[i] != null then
+				if inventorySlots[i].item == item then
+				{
+					inventorySlots[i].increase(amount);
+					onInventorySlotChanged(i, inventorySlots[i]);
+					return;
+				}
+			}
+		
+			# look for empty slots
+			for var i in inventorySlots.keys() do
+			{
+				if inventorySlots[i] == null then
+				{ 
+					inventorySlots[i] = inventory.ItemStack(amount, item);
+					onInventorySlotChanged(i, inventorySlots[i]);
+					return;
+				}
+			}
+			print("inventory full");
+		}
+	}
+	
+	class EntityPlayer : EntityWithInventory
+	{
+	public:
+		var movX = 0, movY = 0;
+		var lastMovX = 0;
+		
+		static var speed = 0.05;
+	
+		constructor(p_x, p_y) : super(p_x, p_y, [-0.3, -1.5, 0.3, 0])
+		{
+			this.inventorySlots = inventory.makePlayerInventory();
+		}
+		
+		function render()
+		{
+			use namespace disp;
+			canvas.reset();
+			canvas.scale(dispScale);
+			canvas.shift(x-offX, y-offY);
+
+			if movX != 0 then
+			{
+				# legs
+				var rot = math.sin(time()*speed*math.pi()*0.09)*0.3;
+				var d = math.abs(rot)*0.05;
+				canvas.shift(0, -0.6);
+				canvas.rotate(rot);
+				canvas.setFillColor(0, 0, 0.5);
+				canvas.fillRect(-0.075, 0, 0.15, 0.6-d);
+				canvas.rotate(-2*rot);
+				canvas.setFillColor(0, 0, 0.7);
+				canvas.fillRect(-0.075, 0, 0.15, 0.6-d);
+				canvas.rotate(rot);
+				canvas.shift(0, +0.6);
+
+
+				# back arm
+				canvas.shift(0, -1.2);
+				canvas.rotate(2*rot);
+				canvas.setFillColor(0.4, 0.2, 0.05);
+				canvas.fillRect(-0.05, 0, 0.1, 0.5-d);
+				canvas.rotate(-2*rot);
+
+				# chest
+				canvas.setFillColor(0.8, 0.4, 0.1);
+				canvas.fillRect(-0.1, -0.05, 0.2, 0.7);
+
+				# front arm
+				canvas.rotate(-2*rot);
+				canvas.setFillColor(0.6, 0.3, 0.15);
+				canvas.fillRect(-0.05, 0, 0.1, 0.5-d);
+				canvas.rotate(2*rot);
+				canvas.shift(0, +1.2);
+
+				# head
+				canvas.setFillColor(0.5, 0.4, 0.3);
+				canvas.fillRect(-0.1, -1.5, 0.2, 0.25);
+			}
+			else
+			{
+				#legs
+				canvas.shift(-0.1, -0.6);
+				canvas.setFillColor(0, 0, 0.7);
+				canvas.fillRect(-0.075, 0, 0.15, 0.6);
+				canvas.shift(+0.2, 0);
+				canvas.fillRect(-0.075, 0, 0.15, 0.6);
+				canvas.shift(-0.1, +0.6);
+
+				# chest
+				canvas.shift(0, -1.2);
+				canvas.setFillColor(0.8, 0.4, 0.1);
+				canvas.fillRect(-0.2, -0.05, 0.4, 0.7);
+				canvas.shift(0, +1.2);
+
+				# arms
+				canvas.shift(-0.25, -1.2);
+				canvas.setFillColor(0.6, 0.3, 0.15);
+				canvas.fillRect(-0.05, 0, 0.1, 0.5);
+				canvas.shift(+0.5, 0);
+				canvas.fillRect(-0.05, 0, 0.1, 0.5);
+				canvas.shift(-0.25, +1.2);
+
+				# head
+				canvas.setFillColor(0.5, 0.4, 0.3);
+				canvas.fillRect(-0.1, -1.5, 0.2, 0.25);	
+			}
+		}
+		# function render
+		
+		
+		
+		function tick()
+		{
+			
+			var dy = 0;
+			if movY == -1 and isOnGround then # ontop of a block
+			{
+				velY = -0.25; #-0.2;
+				dy = -0.1;
+			}
+			
+			if super.tickPhysics(dx = movX*speed, dy = dy) then
+				entityDisp.markDirty(this);
+			else if movX != 0 or lastMovX != movX then
+			{
+				markBackgroundDirty();
+				entityDisp.markDirty(this);
+			}
+				
+			lastMovX = movX;
+		}
+		
+	}
+	# class Player
+}
+# namespace entities
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,94 @@
+
+namespace canvasUtil
+{
+	function setFillColor(vec)
+	{
+		if vec.size() == 3
+		then canvas.setFillColor(vec[0], vec[1], vec[2]);
+		else canvas.setFillColor(vec[0], vec[1], vec[2], vec[3]);
+	}
+	
+	var highlightColor = [1, 1, 1, 1];
+	var shadowColor	   = [0, 0, 0, 0.25];
+	
+
+	function bevel0(x, y, w, h)
+	{		
+		var ww = w-0.0625;
+		var hh = h-0.125;
+		var yy = y+0.0625;
+		canvas.setFillColor(1, 1, 1, 1);
+		canvas.fillRect(x, y, ww, 0.0625);
+		canvas.fillRect(x, yy, 0.0625, hh);
+
+		canvas.setFillColor(0, 0, 0, 0.25);
+		canvas.fillRect(x+0.0625, y+h-0.0625, ww, 0.0625);
+		canvas.fillRect(x+ww, yy, 0.0625, hh);
+	}
+	
+	function bevel0011_0()
+	{		
+		canvas.setFillColor(1, 1, 1, 1);
+		canvas.fillRect(0,    0, 15/16,  1/16);
+		canvas.fillRect(0, 1/16,  1/16, 14/16);
+
+		canvas.setFillColor(0, 0, 0, 0.25);
+		canvas.fillRect( 1/16, 15/16, 15/16,  1/16);
+		canvas.fillRect(15/16,  1/16,  1/16, 14/16);
+	}
+	
+	function compBevel(compLight, compDark, x, y, w, h)
+	{		
+		if noBevels then return;
+		var ww = w-0.0625;
+		var hh = h-0.125;
+		var xx = x+0.0625;
+		var yy = y+0.0625;
+		var rr = x+ww;
+		var bb = y+h-0.0625;
+		
+		compLight.push(function[x, y, ww, hh, yy]() {
+			canvas.fillRect(x, y, ww, 0.0625);
+			canvas.fillRect(x, yy, 0.0625, hh);
+		});
+
+		compDark.push(function[x, y, ww, hh, xx, yy, rr, bb]() {
+			canvas.fillRect(xx, bb, ww, 0.0625);
+			canvas.fillRect(rr, yy, 0.0625, hh);
+		});
+	}
+
+	function bevel1(x, y, w, h, r=0, lt=0, rb=0) {}
+	
+	var bevel = bevel0, bevel0011 = bevel0011_0;
+	if noBevels then {
+		bevel = bevel1;
+		bevel0011 = function() {};
+	}
+	
+	
+	class DefaultCanvas
+	{
+	public:
+		var setFillColor = canvas.setFillColor;
+		var fillRect = canvas.fillRect;
+	}
+	var defaultCanvas = DefaultCanvas();
+	
+	class TexCanvasBakery
+	{
+	public:
+		function setFillColor(r, g, b, a=1) {}
+		function fillRect(x, y, w, h) {}
+	}
+	
+}
+# namespace canvasUtil
+
+	
+	
+	
+	
+	
+	
+	

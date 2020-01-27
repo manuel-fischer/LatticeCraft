@@ -1,0 +1,230 @@
+
+namespace textureState
+{
+	var renderSky = true;	
+}
+
+function divideElements(arr, val)
+{
+	var ret = [];
+	for	var e in arr do
+	{
+		if Type(e) == Array then ret.push(divideElements(e, val));
+		else ret.push(e/val);
+	}
+	return ret;
+}
+
+namespace texture
+{
+	
+	function sky()
+	{
+		if textureState.renderSky then {
+			canvas.setFillColor(0.5, 0.75, 1);
+			canvas.fillRect(0, 0, 1, 1);
+		}
+	}
+	
+	function solid(color)
+	{
+		return function[color]()
+		{
+			canvasUtil.setFillColor(color);
+			canvas.fillRect(0, 0, 1, 1);
+		};
+	}
+	
+	function solidBevel(color)
+	{
+		return function[color]()
+		{
+			canvasUtil.setFillColor(color);
+			canvas.fillRect(0, 0, 1, 1);
+			canvasUtil.bevel0011();
+		};
+	}
+	
+	function bevel(background)
+	{
+		return function[background]()
+		{
+			background();
+			canvasUtil.bevel0011();
+		};
+	}
+	
+	
+	function solidBevelGrown(color, grownColor)
+	{		
+		return function[color, grownColor]()
+		{
+			canvasUtil.setFillColor(color);
+			canvas.fillRect(0, 0, 1, 1);
+			
+			canvasUtil.setFillColor(grownColor);
+			canvas.fillRect(0, 0, 1, 0.25);
+			canvas.setFillColor(0, 0, 0, 0.25);
+			canvas.fillRect(1/16, 3/16, 14/16, 1/16);
+			
+			canvasUtil.bevel0011();
+		};
+	}
+	
+	function bevelBlocks(blocks, background)
+	{		
+		var bevelLightComp = [];
+		var bevelDarkComp = [];
+		for var b in blocks do
+		{
+			var x0 = b[0]/16, y0 = b[1]/16, x1 = b[2]/16, y1 = b[3]/16;
+			canvasUtil.compBevel(bevelLightComp, bevelDarkComp, x0, y0, x1, y1);
+		}
+		var comp = util.arrayConcat([
+			[background],
+			[function() { canvas.setFillColor(1, 1, 1, 1); }],
+			bevelLightComp,
+			[function() { canvas.setFillColor(0, 0, 0, 0.25); }],
+			bevelDarkComp,
+		]);
+		
+		return function[comp]()
+		{
+			for var i in comp do i();
+		};
+	}
+	
+	function blocks(color, blocks, background)
+	{
+		var fillComp = [];
+		var bevelLightComp = [];
+		var bevelDarkComp = [];
+		for var b in blocks do
+		{
+			var x0 = b[0]/16, y0 = b[1]/16, x1 = b[2]/16, y1 = b[3]/16;
+			fillComp.push(function[x0, y0, x1, y1]() { canvas.fillRect(x0, y0, x1, y1); });
+			canvasUtil.compBevel(bevelLightComp, bevelDarkComp, x0, y0, x1, y1);
+		}
+		var comp = util.arrayConcat([
+			fillComp,
+			[function() { canvas.setFillColor(1, 1, 1, 1); }],
+			bevelLightComp,
+			[function() { canvas.setFillColor(0, 0, 0, 0.25); }],
+			bevelDarkComp,
+		]);
+		
+		return function[color, comp, background]()
+		{
+			background();
+			
+			canvasUtil.setFillColor(color);
+			for var i in comp do i();
+		};
+	}
+	
+	
+	function planks(color)
+	{
+		var blocks = [
+			[ 0,  0, 16,  4],
+			[ 0,  4,  8,  4], [ 8,  4,  8,  4],
+			[ 0,  8, 16,  4],
+			[ 0, 12,  8,  4], [ 8, 12,  8,  4],
+		];
+		
+		return bevelBlocks(blocks, solid(color));
+	}
+	
+	function log(color)
+	{
+		
+		var blocks = [
+			[  0,  0,  16, 16],
+			[1.6,  0,12.8, 16],
+			[4.8,  0, 6.4, 16],
+		];
+		
+		return bevelBlocks(blocks, solid(color));
+	}
+	
+	
+	function leaves(color, background)
+	{
+		var leaveBlocks = [
+			[ 0,  0,  3,  5], [ 3,  2,  3,  4], [ 9,  0,  4,  5],
+			[ 2,  6,  3,  5], [ 5,  8,  5,  4], [11,  7,  5,  3],
+			[ 1, 11,  5,  4], [ 7, 13,  5,  3], [13, 11,  3,  5]
+		];
+		
+		return blocks(color, leaveBlocks, background);
+	}
+	
+	function sapling(stem, leaves, background)
+	{
+		var leaveBlocks = [
+			                  [ 3,  2,  3,  4], [ 9,  0,  4,  5],
+							  [ 6,  5,  6,  3],
+			[ 2,  6,  3,  5], [ 5,  8,  5,  4], [11,  7,  5,  3],
+		];
+		
+		var stemBlocks = [
+			[7, 10, 3, 6],
+		];
+		
+		var stemTex = blocks(stem, stemBlocks, background);
+		
+		return blocks(leaves, leaveBlocks, stemTex);
+	}
+	
+	
+	function glass(background)
+	{
+		var blocks = [
+			[ 0,  0, 16, 16],
+			[ 2,  2, 12, 12],
+		];
+		return bevelBlocks(blocks, background);
+	}
+	
+	
+	function bricks(groutColor, brickColor)
+	{
+		
+		var blocks = [
+			        [0, 0, 7, 3], [8, 0, 7, 3],
+			[0, 4, 3, 3], [4, 4, 7, 3], [12, 4, 4, 3],
+			        [0, 8, 7, 3], [8, 8, 7, 3],
+			[0, 12, 3, 3], [4, 12, 7, 3], [12, 12, 4, 3],
+		];
+		
+		var bb = divideElements(blocks, 16);
+		#for var b in blocks do bb.push(b[0]/32, b[1]/32, b[2]/32, b[3]/32);
+		
+		return function[groutColor, brickColor, bb]()
+		{
+			canvasUtil.setFillColor(groutColor);
+			canvas.fillRect(0, 0, 1, 1);
+			
+			canvasUtil.setFillColor(brickColor);
+			for var b in bb do
+			{
+				canvas.fillRect(b[0], b[1], b[2], b[3]);
+			}
+		};
+		
+	}
+	
+	function ore(color, background)
+	{
+		var oreBlocks = [
+			[ 8,  2,  4,  5], 
+			[ 2,  7,  4,  4],
+		    [ 9, 10,  5,  4]
+		];
+
+		return blocks(color, oreBlocks, background);
+	}
+}
+# namespace texture
+
+

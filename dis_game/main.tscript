@@ -1,0 +1,101 @@
+ ###
+##
+##  latticecraft, written by Manuel Fischer
+##
+##  note that lines introduced with #[file] refer to a section in a file
+##  this allows the whole file to be split into separate files, these
+##  files are not nessecarily independent
+##
+ ###
+
+# functions prefixed with ref return an array of two elements - these are used as references,
+# the first is a container(array, dictionary),
+# the second is an index/key into the container
+#
+# TODO empty chunks (only consisting of air) should be stored as >null< and rendered by simply filling the chunk with the air color
+# TODO settings
+#     - if to store unchanged chunks (those chunks might be different in future versions
+#     - if to use RLE compression, (worlds loaded are always loaded with RLE, uncompressed files are by design loadable with RLE)
+
+namespace settings
+{
+	var storeChangedChunksOnly = true;
+}
+
+#var worldSeed = Integer(time()*123456789); # shouldn't be zero
+#print("Seed: " + worldSeed);
+
+namespace force
+{
+	var dispScale = null; # set to integer
+	var putAirItem = true;
+}
+
+var showChunkBorders = false;
+var debug = true;
+var debugRender = false;
+var debugTick = false;
+var debChunkGen = false;
+var randomTickSpeed = 2; #8
+var randomTickRadius = 20; #12
+
+var dynUpdateTime = 1e1000*1000;
+# var dynUpdateTime = 0;
+var dynScroll = false; # non integral block scrolling
+
+var noBevels = false;
+
+function printHelp()
+{
+	print(
+		"\n"
+		"Press short to place blocks, press half a second to destroy blocks\n"
+		"You can drag the mouse to destroy/place multiple blocks\n"
+		"Press [+] to zoom in, press [-] to zoom out\n"
+		"Use [W] [A] [S] [D] to move the player\n"
+		"[E] inventory, [O] settings, [Esc] game menu (load/save worlds)\n"
+		"\n"
+		"Note that the canvas window needs to be focused"
+	);
+}
+
+function renderCredits()
+{
+	var cx = canvas.width() // 2;
+	var s = canvas.height() // 10;
+	var l = canvas.width() // 8;
+	canvas.setFillColor(0.1, 0.4, 0.8);
+	canvas.clear();
+	
+	canvas.setFillColor(1, 1, 1);
+	
+	canvas.setTextAlign("left");
+	# the windows font used in the recent BSOD, otherwise helvetica
+	canvas.setFont("Segoe UI,helvetica", s*3.5);
+	canvas.text(l-0.25*s, 2*s, ":)");
+	
+	#canvas.setTextAlign("center");
+	
+	canvas.setFont("Segoe UI Light,helvetica", s);
+	canvas.text(l-0.05*s, 6*s, "LatticeCraft");
+
+	canvas.setFont("Segoe UI,helvetica", s/2);
+	canvas.text(l, 7.25*s, "by Manuel Fischer");
+}
+
+
+
+#[section] main
+
+namespace main
+{
+	initScale();
+	
+	world.bindNewWorld();
+
+	markCompletelyDirtyScreen();
+
+	printHelp();
+	enterEventMode();
+	renderCredits();
+}

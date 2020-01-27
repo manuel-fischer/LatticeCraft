@@ -1,0 +1,719 @@
+#[section] base
+namespace inventory
+{	
+	var hotbarSize = 10;
+	var backpackSize = 10*5;
+	var inventorySize = hotbarSize + backpackSize;
+
+	function makePlayerInventory()
+	{
+		return Array(inventorySize, null);
+	}
+	
+	class ItemStack
+	{
+	public:
+		var amount;
+		var item;
+		
+		constructor(amount, item)
+		{
+			this.amount = amount;
+			this.item   = item;
+		}
+		function copy()
+		{
+			return ItemStack(amount, item);	
+		}
+		
+		function increase(amount=1)
+		{	
+			this.amount += amount;
+			return false;
+		}
+		
+		function decrease()
+		{
+			this.amount -= 1;
+			if this.amount > 0 then return false;
+			return true;
+		}
+		
+		# renders item but not amount
+		function renderItem()
+		{
+			item.renderItem();
+		}
+		
+	}
+}
+
+
+
+
+
+#[section] main
+namespace inventory
+{
+	use namespace disp;	
+	
+	var hotbarDirty = true;
+	
+	var hotbarIndex = 0;
+	var currentItem = null;
+	var slots;
+	
+	#if force.putAirItem then hotbar[9] = blocks.air;
+	
+	
+	var hotbL, hotbT, hotbR, hotbB, hotbOff;
+	var guiRegionY;
+	
+	# constant, do not change
+	var hotbAllDirty = { "0": 0, "1": 1, "2": 2, "3": 3, "4": 4,
+	                     "5": 5, "6": 6, "7": 7, "8": 8, "9": 9 };
+	
+	var hotbDirty = {};
+	
+	
+	function bindEntityInventory(entityWithInventory)
+	{
+		slots = entityWithInventory.inventorySlots;
+		if slots[hotbarIndex] != null then
+			currentItem = slots[hotbarIndex].item;
+		else
+			currentItem = null;
+			
+		entityWithInventory.onInventorySlotChanged = function(i, itemstack)
+		{
+			if i == hotbarIndex then currentItem = itemstack.item;
+			if i < hotbarSize then hotbDirty[String(i)] = i;
+		};
+	}
+}
+
+
+namespace inventory {
+	
+	function markCompletelyDirtyScreen()
+	{
+		hotbarDirty = true;
+	}
+	
+	
+	function selectSlot(index) {
+		if hotbarIndex == index then return;
+		
+		hotbDirty[String(index)] = index;
+		hotbDirty[String(hotbarIndex)] = hotbarIndex;
+		
+		hotbarIndex = index;
+		if slots[index] != null then
+			currentItem = slots[index].item;
+		else
+			currentItem = null;
+	}
+	
+	namespace dispHotbar
+	{
+		var scl;
+		
+		var hotOff;
+		var hx, hy, w;
+	}
+	
+	namespace dispItem
+	{
+		function renderAmount(item)
+		{
+			use namespace dispHotbar;
+			
+			if item.amount > 1 then
+			{
+				var amountStr = String(item.amount);
+				#var x = hotOff*i*scl;
+
+				if item.amount > 99 then
+				{
+					canvas.setFont("helvetica", gui.guiScale*1/2);
+					# bold font, by multiple rendering
+					canvas.text(0, 0.0625*scl, amountStr);
+					canvas.text(0.25*0.0625*scl, 1.25*0.0625*scl, amountStr);
+					canvas.setFont("helvetica", gui.guiScale*2/3);
+				}
+				else
+					canvas.text(0, 0, amountStr);
+			}
+		}	
+	}
+	
+	function initHotbar()
+	{
+		use namespace dispHotbar;
+		dispHotbar.scl = gui.guiScale * 1; #1.125;
+		
+		var px = 0.0625; #0.1; #0.0625;
+		var dd = px*scl;
+		
+		dispHotbar.hotOff = 1+2*px; # 2*1/16 on each side
+		
+		dispHotbar.hy = canvas.height() - gui.guiScale*1.75;
+		dispHotbar.w = hotbarSize*hotOff - hotOff + 1;
+		dispHotbar.hx = (canvas.width() - scl*w) / 2;
+		
+		#updating static values, TODO: this is shitty code
+		hotbOff = hotOff*scl;
+		hotbL = hx-dd;
+		hotbT = hy-dd;
+		hotbR = hotbL + hotbOff*hotbarSize;
+		hotbB = hy+scl+dd;
+		
+		guiRegionY = canvas.height() - gui.guiScale*2.75;
+	}
+	
+	function renderHotbar()
+	{
+		use namespace dispHotbar;
+		if hotbarDirty then hotbDirty = hotbAllDirty;
+		else if hotbDirty.size() == 0 then return;
+		
+		initHotbar();
+		
+		canvas.reset();
+		canvas.shift(hx, hy);
+		canvas.scale(scl);
+		
+		var ttX = 0;
+		for var i in hotbDirty.values() do
+		{
+			var x = hotOff*i;
+			canvas.shift(x-ttX, 0); ttX = x;
+			if i == hotbarIndex then
+				canvas.setFillColor(1, 1, 1, 1);
+			else
+				canvas.setFillColor(0.4, 0.4, 0.4, 1);
+				
+			canvas.fillRect(-0.0625, -0.0625, 1.125, 1.125);
+			canvas.setFillColor(0.3, 0.3, 0.3, 1);
+			canvas.fillRect(0, 0, 1, 1);
+			var b = slots[i];
+			if b != null then b.renderItem();
+			
+		}
+		
+		# draw amount
+		canvas.shift(-ttX, 0);
+		canvas.scale(1/scl);
+		
+		canvas.setTextAlign("right");
+		canvas.setFont("helvetica", gui.guiScale*2/3);
+		var px = scl*0.0625;
+		canvas.shift(px*15, px*7);
+		for var k in 0:2 do
+		{
+			var lastX = 0;
+			canvas.setFillColor(k, k, 0.5);
+			for var i in hotbDirty.values() do
+			{
+				canvas.shift((i-lastX)*hotOff*scl, 0);
+				lastX = i;
+				if slots[i] == null then continue;
+				dispItem.renderAmount(slots[i]);
+			}
+			canvas.shift(-px-lastX*hotOff*scl, -px);
+		}
+		# end draw amount
+		
+		hotbDirty = {};
+		hotbarDirty = false;
+	}
+	
+	dispWorld.markDirtyGuiCB = function(x, y)
+	{
+		if y*dispScale+dispScale >= hotbT and y*dispScale <= hotbB then
+		{
+			var xx  = x*dispScale-hotbL;
+			var xxl = xx+dispScale;
+			var xxr = xx-hotbOff;
+			for var i in 0:hotbarSize do
+			{
+				if xxl > i*hotbOff and xxr < i*hotbOff then
+					hotbDirty[String(i)] = i;
+			}
+		}
+	};
+	
+	function isOnGui(x, y)
+	{
+		return y >= guiRegionY;	
+	}
+	
+	function onMouseDown(x, y)
+	{
+#		if y >= hotbT and y <= hotbB then
+#		{
+#			var xx  = x-hotbL;
+#			var xxr = xx - hotbOff;
+#			for var i in 0:hotbarSize do
+#			{
+#				if xx > i*hotbOff and xxr < i*hotbOff then
+#				{
+#					selectSlot(i);
+#					return;
+#				}
+#			}
+#		}
+		if y >= hotbT then if y < hotbB then
+		if x >= hotbL then if x < hotbR then
+		{
+			selectSlot(Integer((x-hotbL) // hotbOff));
+		}
+		
+	}
+	
+	
+	function useCurrent()
+	{
+		if currentItem != null then
+		{
+			if slots[hotbarIndex].decrease() then
+			{
+				slots[hotbarIndex] = null;
+				currentItem = null;
+			}
+			hotbDirty[String(hotbarIndex)] = hotbarIndex;
+		}
+	}
+	
+}
+# namespace inventory
+
+
+
+
+
+
+
+
+
+
+#[section] gui.GuiInventory
+namespace gui
+{
+	
+	class ItemPanel : Control
+	{
+	public:
+		var slots;
+		var cols, rows;
+		var currentSlot = null;
+		var onItemSelect; # return true to select slot,
+		                  # return false to keep previous selected
+						  # return null to remove selection
+		var onItemDeselect;
+		var slotHighlightFunc;
+		
+		var slotsDirty;
+		
+		#static function rowsOr(slots, cols, rows)
+		#{
+		#	if rows == null then
+		#		return -(-slots.size() // cols); # divide and round up
+		#	else
+		#		return rows;
+		#}
+		
+		constructor(slots, cols, rows, x=0, y=0,
+					onItemSelect=null, onItemDeselect=null, slotHighlightFunc=null)
+			: super(x=x, y=y, width=cols*1.125, height=rows*1.125)
+		{
+			this.slots = slots;
+			
+			this.cols = cols;
+			this.rows = rows;
+			
+			if onItemSelect == null then
+				this.onItemSelect = function(self, index, stack) { return true; };
+			else
+				this.onItemSelect = onItemSelect;
+				
+			if onItemDeselect == null then
+				this.onItemDeselect = function(self) {};
+			else
+				this.onItemDeselect = onItemDeselect;
+			
+			if slotHighlightFunc == null then
+				this.slotHighlightFunc = function(i) { return false; };
+			else
+				this.slotHighlightFunc = slotHighlightFunc;
+				
+			slotsDirty = {};
+		}
+		
+		function markSlotDirty(i)
+		{
+			if i != null then slotsDirty[String(i)] = i;
+		}
+		
+		
+		
+		function handleItemSelect(slotIndex)
+		{
+			return onItemSelect(this, slots, slotIndex);
+		}
+		
+		function handleItemDeselect()
+		{
+			return onItemDeselect(this);	
+		}
+		
+		
+		function onMouseDown(event)
+		{
+			# cell size;
+			var sc = 1.125*guiScale;
+			var xx = (event.x-this.x*guiScale) // sc;
+			var yy = (event.y-this.y*guiScale) // sc;
+			var newSlot = null;
+			if 0 <= xx then if xx < cols then
+			if 0 <= yy then if yy < rows then
+			{
+				newSlot = Integer(xx + yy*cols);
+				
+				if newSlot >= slots.size() then newSlot = null;
+			}
+				
+			if newSlot != currentSlot and newSlot != null then
+			{
+				markSlotDirty(currentSlot);
+				markSlotDirty(newSlot);
+				var chgx = handleItemSelect(newSlot);
+				if chgx == null then
+					currentSlot = null;
+				else if chgx == true then
+					currentSlot = newSlot;
+				return true;
+			}
+			else
+			{
+				markSlotDirty(currentSlot);
+				handleItemDeselect();
+				currentSlot = null;
+				return true;
+			}
+		}
+		
+		function onKeyDown(event)
+		{
+			if event.key == "Enter" then
+			{
+				return handleItemSelect(currentSlot);
+			}
+				
+			
+			var newSlot = currentSlot;
+			if newSlot == null then newSlot = 0;
+			
+			if event.key == "ArrowLeft" then
+				newSlot = math.max(0, newSlot-1);
+			else if event.key == "ArrowRight" then
+				newSlot = math.min(newSlot+1, slots.size()-1);
+			else if event.key == "ArrowUp" then
+				newSlot = math.max(0, newSlot-cols);
+			else if event.key == "ArrowDown" then
+				newSlot = math.min(newSlot+cols, slots.size()-1);
+			
+			if newSlot != currentSlot then
+			{
+				markSlotDirty(currentSlot);
+				markSlotDirty(newSlot);
+				currentSlot = newSlot;
+				return true;
+			}
+		}
+		
+		
+		function render(parentDirty)
+		{
+			if not parentDirty and slotsDirty.size() == 0 then return;
+			
+			var gs = guiScale;
+			var sc = 1.125*gs;
+
+			#canvas.shift(0.5*s, 2.3*s);
+			#canvas.shift(0.5*gs, 2.25*gs);
+			doCanvasShift();
+			#draw boxes
+			var scl = guiScale;
+			var px = scl*0.0625;
+			canvas.shift(px, px);
+			
+			var renderBackground = function[scl, currentSlot, slotHighlightFunc](i)
+			{			
+				if i == currentSlot then
+					canvas.setFillColor(1, 1, 1, 1);
+				else if slotHighlightFunc(i) then
+					canvas.setFillColor(0.3, 0.3, 0.3, 1);
+					#canvas.setFillColor(0.5, 0.5, 0.5, 1);
+				else
+					canvas.setFillColor(0.15, 0.15, 0.15, 1);
+					#canvas.setFillColor(0.25, 0.25, 0.25, 1);
+					#canvas.setFillColor(0.3, 0.3, 0.3, 1);
+				
+				canvas.fillRect(-0.0625*scl, -0.0625*scl, 1.125*scl, 1.125*scl);
+				canvas.setFillColor(0.1, 0.1, 0.1, 1);
+				#canvas.setFillColor(0.2, 0.2, 0.2, 1);
+				canvas.fillRect(0, 0, scl, scl);
+			};
+			
+			if parentDirty then
+			{
+				var x = 0, y = 0;
+				for var i in slots.keys() do
+				{
+					renderBackground(i);
+
+					x += 1;
+					canvas.shift(sc, 0);
+					if x >= cols then {
+						x = 0; y += 1;
+						canvas.shift(-sc*cols, sc);
+					}
+				}
+				canvas.shift(-sc*x, -sc*y);
+
+				#draw items
+				x = 0; y = 0;
+				for var i in slots.keys() do
+				{
+					var b = slots[i];
+
+					if b != null then
+					{
+						canvas.scale(scl);
+						b.renderItem();
+						canvas.scale(1/scl);
+					}
+
+
+					x += 1;
+					canvas.shift(sc, 0);
+					if x >= cols then {
+						x = 0; y += 1;
+						canvas.shift(-sc*cols, sc);
+					}
+				}
+				canvas.shift(-sc*x, -sc*y);
+
+				# draw amount
+
+				canvas.setTextAlign("right");
+				canvas.setFont("helvetica", gui.guiScale*2/3);
+				canvas.shift(px*15, px*7);
+				for var k in 0:2 do
+				{
+					canvas.shift(-k*px, -k*px);
+					x = 0; y = 0;
+					canvas.setFillColor(k, k, 0.5);
+
+					for var i in slots.keys() do
+					{
+						var b = slots[i];
+
+						if b != null then inventory.dispItem.renderAmount(b);
+# 						if b.amount > 1 then
+# 						{
+# 							if b.amount > 99 then
+# 							{
+# 								canvas.setFont("helvetica", gui.guiScale*1/2);
+# 								# bold font, by multiple rendering
+# 								canvas.text(0, 1*px, String(b.amount));
+# 								canvas.text(0.25*px, 1.25*px, String(b.amount));
+# 								canvas.setFont("helvetica", gui.guiScale*2/3);
+# 							}
+# 							else
+# 								canvas.text(0, 0, String(b.amount));
+# 						}
+
+
+						x += 1;
+						canvas.shift(sc, 0);
+						if x >= cols then {
+							x = 0; y += 1;
+							canvas.shift(-sc*cols, sc);
+						}
+					}
+					canvas.shift(-sc*x, -sc*y);
+					canvas.shift(k*px, k*px);
+				}
+				canvas.shift(-px*15, -px*7);
+				# end draw amount
+
+			}
+			else
+			{
+				var lastX=0, lastY=0;
+				for var i in slotsDirty.values() do
+				{
+					var x = i % cols, y = i // cols;
+					canvas.shift(sc*(x-lastX), sc*(y-lastY));
+					lastX = x; lastY = y;
+					
+					var b = slots[i];
+
+					renderBackground(i);
+					if b != null then
+					{
+						canvas.scale(scl);
+						b.renderItem();
+						canvas.scale(1/scl);	
+						if b.amount > 1 then
+						{
+						
+							canvas.setTextAlign("right");
+							canvas.setFont("helvetica", gui.guiScale*2/3);
+							canvas.shift(px*15, px*7);
+							for var k in 0:2 do
+							{
+								canvas.setFillColor(k, k, 0.5);
+								canvas.shift(-k*px, -k*px);
+								inventory.dispItem.renderAmount(b);
+								canvas.shift(k*px, k*px);
+							}
+							canvas.shift(-px*15, -px*7);
+						}
+					}
+					
+				}
+				canvas.shift(-sc*lastX, -sc*lastY);
+			}
+			slotsDirty = {};
+			
+			##canvas.shift(-0.5*gs, -2.3*gs);
+			#canvas.shift(-0.5*gs, -2.25*gs);
+			canvas.shift(-px, -px);
+			undoCanvasShift();
+		}
+	}
+	# class ItemPanel
+	
+	
+	class GuiInventory : ModalDlg
+	{
+	public:
+		var slots;
+		var hotbarSize, backpackSize;
+		var selectedPanel, selectedSlotIndex;
+		
+		constructor(slots, hotbarSize, backpackSize)
+			: super(
+				caption="Inventory",
+				width=0.5 + 10*1.125 + 0.5, height=2.25+2*1.125+0.5+6*1.125+0.5,
+				controls={
+					panCrafting: ItemPanel(
+						x=0.5 + 1.125*3, y=2.25,
+						cols=2, rows=2,
+						slots=[null, null, null, null],
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panCrafted: ItemPanel(
+						x=0.5 + 1.125*6, y=2.25+1.125*0.5,
+						cols=1, rows=1,
+						slots=[null]
+					),
+					panInventory: ItemPanel(
+						x=0.5, y=2.25+2*1.125+0.5,
+						cols=10, rows=6,
+						slots=slots,
+						slotHighlightFunc=function[hotbarSize](index)
+						{
+							return index < hotbarSize;	
+						},
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+				}
+			)
+		{
+			this.slots = slots;
+			this.hotbarSize = hotbarSize;
+			this.backpackSize = backpackSize;
+		}
+		
+		function panelOnItemSelect(panCtrl, slots, slotIndex)
+		{
+			if selectedPanel == null then
+			{
+				selectedPanel = panCtrl;
+				selectedSlotIndex = slotIndex;
+				return true;
+			}
+			else if selectedPanel.slots[selectedSlotIndex] == null then
+			{	
+				
+				selectedPanel.markSlotDirty(selectedSlotIndex);
+				selectedPanel.currentSlot = null;
+				markDirtyCtrl(selectedPanel);
+				
+				selectedPanel = panCtrl;
+				selectedSlotIndex = slotIndex;
+				return true;
+			}
+			else
+			{
+				var a = panCtrl.slots[slotIndex];
+				var b = selectedPanel.slots[selectedSlotIndex];
+				var addItemAmount = false;
+				if a != null and b != null and a != b then addItemAmount = a.item == b.item;
+				
+				if addItemAmount then
+				{
+					selectedPanel.slots[selectedSlotIndex] = null;
+					panCtrl.slots[slotIndex].increase(b.amount);	
+				}
+				else
+				{
+					selectedPanel.slots[selectedSlotIndex] = a;
+					panCtrl.slots[slotIndex] = b;
+				}
+				
+				selectedPanel.markSlotDirty(selectedSlotIndex);
+				selectedPanel.currentSlot = null;
+				markDirtyCtrl(selectedPanel);
+				
+				panCtrl.markSlotDirty(slotIndex);
+				markDirtyCtrl(panCtrl);
+				
+				selectedPanel = null;
+				return null; # do not select slot
+			}
+		}
+		function panelOnItemDeselect(panCtrl)
+		{
+			selectedPanel = null;
+		}
+		
+		function render(parentDirty)
+		{
+			super.render(parentDirty);
+			
+			if parentDirty then
+			{
+				doCanvasShift();
+				var gs = guiScale*1.125;
+				var xx = (0.5 + 1.125*5)*guiScale, yy = (2.25+1.125*0.5)*guiScale;
+				canvas.shift(xx, yy);
+				canvas.setFillColor(1, 1, 1);
+				canvas.fillArea([[0.3*gs, 0.3*gs], [0.3*gs, 0.7*gs], [0.7*gs, 0.5*gs]]);
+				canvas.shift(-xx, -yy);
+				undoCanvasShift();
+			}
+		}
+	}
+	
+}
+# namespace gui
+
+
+

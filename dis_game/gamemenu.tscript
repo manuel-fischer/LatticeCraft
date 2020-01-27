@@ -1,0 +1,177 @@
+namespace gamemenu
+{
+	
+	function registerWorld(worldName)
+	{
+		var worldlist = [];
+		if exists("latticecraft.worldlist") then
+			worldlist = load("latticecraft.worldlist");
+
+		var indx = util.find(worldlist, worldName);
+		if indx == 0 then return; # already at the top
+		if indx != null then
+			worldlist = Array.concat(worldlist[0:indx], worldlist[indx+1:worldlist.size()]);
+			
+		worldlist = Array.concat([worldName], worldlist);
+		save("latticecraft.worldlist", worldlist);
+	}
+	
+	class GuiWorldSelection : gui.ModalDlg
+	{
+	public:
+		constructor(caption, onSelect, enableNonexisting)
+			: super(
+				caption=caption,
+				width=10, height=2.3+7+0.5+1+0.5,
+				controls={
+					lstWorlds: gui.ControlList(
+						x=0.5, y=2.3,
+						width=9, height=7.2,
+						emptyText="There are no world saves yet",
+						onSelect=function[onSelect](i, value)
+						{
+							if onSelect(value) == true then gui.closeModal();
+						}
+					),
+					txtWorld: gui.ControlTextInput(
+						x = 0.5, y=9.8,
+						width=9,
+						promptText="Enter worldname",
+						onEnter=function[onSelect](value)
+						{
+							if onSelect(value) == true then gui.closeModal();
+						}
+					)
+				}
+			)
+		{
+			var lstWorlds = controls["lstWorlds"];
+		
+			var worldlist = [];
+			if exists("latticecraft.worldlist") then
+				worldlist = load("latticecraft.worldlist");
+				
+			lstWorlds.entries = worldlist;
+			#*
+			for var i in 0:5 do
+			{
+				var worldName = "latticecraft"+i+".world";
+				var worldExists = exists(worldName);
+				if not worldExists and not enableNonexisting then continue;
+				var caption = "World " + i;
+				if not worldExists then caption = "<"+caption+">";
+				
+				controls["cmdSel" + i] = gui.ControlButton(
+					x=0.5,y=2.3+1.125*i,
+					width=9,height=1,
+					caption=caption,
+					onClick=function[onSelect, worldName](){
+						if onSelect(worldName) == true then
+							gui.closeModal();
+					}
+				);
+			}
+			*#
+		}
+		
+		function render(parentDirty)
+		{
+			super.render(parentDirty);
+			
+			
+		}
+	}
+	
+	class GuiGameMenu : gui.ModalDlg
+	{
+	public:
+		
+		constructor()
+			: super(
+				caption="Game Menu",
+				width=10, height=9.8,
+				controls={
+					cmdSave: gui.ControlButton(
+						x=0.5, y=2.3, width=9,
+						caption="Save World",
+						onClick=function()
+						{
+							
+							
+							gui.setModal(GuiWorldSelection(
+								caption="Save World",
+								onSelect=function(worldName)
+								{
+									print("Saving...");
+									if exists(worldName) then
+									if not confirm("Do you want to overwrite the world") then return;
+
+									save(worldName, world.serializeWorld(theWorld));
+									registerWorld(worldName);
+									return true;
+								},
+								enableNonexisting=true
+							));
+							
+							
+						}
+					),
+					cmdLoad: gui.ControlButton(
+						x=0.5, y=3.8, width=9, 
+						caption="Load World",
+						onClick=function()
+						{
+							gui.setModal(GuiWorldSelection(
+								caption="Load World",
+								onSelect=function(worldName)
+								{
+									print("Loading...");
+									# "latticecraft.world"
+									if exists(worldName) then
+									{
+										world.bindWorldWithPlayer(
+											world.deserializeWorld(load(worldName))
+										);
+										registerWorld(worldName);
+										return true;
+									}
+									else
+										alert("'" + worldName + "' does not exist");
+								},
+								enableNonexisting=false
+							));
+						}
+					),
+					cmdNewWorld: gui.ControlButton(
+						x=0.5, y=5.3, width=9,
+						caption="New World",
+						onClick=function()
+						{
+							world.bindNewWorld();
+							gui.closeModal();
+						}
+					),
+					cmdSettings: gui.ControlButton(
+						x=0.5, y=6.8, width=9,
+						caption="Settings",
+						onClick=function()
+						{
+							#gui.closeModal();
+							gui.setModal(gui.GuiSettings());
+						}
+					),
+					cmdQuit: gui.ControlButton(
+						x=0.5, y=8.3, width=9,
+						caption="Quit",
+						onClick=function()
+						{
+							quitEventMode();
+						}
+					),
+				}
+			)
+		{}
+	}
+}
+
+

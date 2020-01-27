@@ -1,0 +1,93 @@
+
+namespace util
+{
+	function arrayConcat(a)
+	{
+		var r = [];
+		for var e in a do r = Array.concat(r, e);
+		return r;
+	}
+	
+	function find(a, element)
+	{
+		for var i in a.keys() do if a[i] == element then return i;
+		return null;
+	}
+	
+	function toLowerChar(char)
+	{
+		#           A              Z
+		if char >= 65 and char <= 90 then return char or 32;
+		return char;
+	}
+	
+	
+	function timeit(func)
+	{	
+		#var a = time();
+		func();
+		#var b = time();
+		
+		#if b-a > 30 then
+		#	print(func + " took " + (b-a) + " ms");
+	}
+
+
+	function quotedString(string)
+	{
+		var str = "\"";
+		for var c in string.split("") do
+		{
+			if c == "\"" or c == "\\" then str += "\\";
+			str += c;
+		}
+		return str + "\"";
+	}
+	function jsonToString(json)
+	{
+		if (Type(json) == Array) then
+		{
+			var s = "[";
+			for var value in json do s += jsonToString(value) + ",";
+			if json.size() != 0 then s = s[0:s.size()-1];
+			s += "]";
+			return s;
+		}
+		else if (Type(json) == Dictionary) then
+		{
+			var s = "{";
+			for var key in json.keys() do 
+				s += quotedString(key) + ":" + jsonToString(json[key]) + ",";
+			if json.size() != 0 then s = s[0:s.size()-1];
+			s += "}";
+			return s;
+		}
+		else if (Type(json) == String) then
+		{
+			return quotedString(json);	
+		}
+		else return String(json);
+	}
+
+	function parseInteger(str)
+	{
+		if str[0] == "-"[0] then
+			return -Integer(str[1:str.size()]);
+		else
+			return Integer(str);
+	}
+
+	function splitPos(str)
+	{
+		var comma = find(str.split(""), ",");
+		return [parseInteger(str[0:comma]), parseInteger(str[comma+1:str.size()])];
+	}
+}
+# namespace util
+
+
+
+
+
+
+

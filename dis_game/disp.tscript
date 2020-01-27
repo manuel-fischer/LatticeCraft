@@ -1,0 +1,187 @@
+#[section] fwd
+namespace disp
+{
+	var dispScale;
+	var dispX=0, dispY=0; # in blocks
+	var dispCols=0, dispRows=0;
+	var offX=0, offY=0;
+	var offXD=0, offYD=0; # dynamic offset, fractional part of offset: [0, 1)
+
+	# count of rows to init screen with
+	var hh = 18; # 20;
+}
+# namespace disp
+
+
+#[section] main
+function markCompletelyDirtyScreen()
+{
+	dispWorld.markCompletelyDirtyScreen();
+	entityDisp.markCompletelyDirtyScreen();	
+	inventory.markCompletelyDirtyScreen();
+	inventory.initHotbar();
+}
+
+var canvasVisible = false;
+function initScale()
+{
+	use namespace disp;
+	
+	var lastDispCols = dispCols, lastDispRows = dispRows;
+	
+	if dispScale == null then
+	{
+		if canvas.height() == 0 then {
+			canvasVisible = false;
+			return; # canvas not visible
+		}
+		if force.dispScale != null then
+			dispScale = force.dispScale;
+		else
+			dispScale = math.max(canvas.height()//hh, 16);
+	}
+	dispRows = canvas.height()//dispScale + 1;
+	dispCols = canvas.width()//dispScale + 1;
+	
+	# Zentrieren, position in der Mitte beibehalten
+	offX = offX + lastDispCols//2 - dispCols//2;
+	offY = offY + lastDispRows//2 - dispRows//2;
+	
+	selX = null; selY = null;
+	
+	canvasVisible = true;
+}
+# function initScale
+
+
+
+
+
+
+
+function renderWorld()
+{	
+	for var e in theWorld.entities do
+		if e.isBackgroundDirty() then entityDisp.markDirty(e);
+	
+	dispWorld.renderWorld();
+	for var e in entityDisp.dirty.values() do e.render();
+	entityDisp.dirty = {};
+	#for var e in theWorld.entities do e.markBackgroundDirty();
+}
+
+function renderSelection()
+{
+	use namespace disp;
+	
+	canvas.reset();
+	if mouseInside and selX != null then
+	{
+		var l = math.sin(time()/300)*0.3+0.5;
+		canvas.setFillColor(1, 1, 1, l);
+		canvas.fillRect((selX-offX)*dispScale, (selY-offY)*dispScale, dispScale, dispScale);
+		theWorldCB.markDirtyCB(selX, selY); # TODO move to better place
+	}	
+}
+
+function renderHUD()
+{
+	inventory.renderHotbar();
+}
+	
+function renderDebugDiff()
+{
+	if debugRender then
+	{
+		canvas.reset();
+		canvas.setFillColor(0, 0, 0, 1/256);
+		canvas.fillRect(0, 0, canvas.width(), canvas.height());
+	}
+}
+	
+function render()
+{
+	if not canvasVisible then return;
+	renderDebugDiff();
+	
+	renderWorld();
+	
+	renderSelection();
+	renderHUD();
+}
+
+
+
+function scroll(dx, dy)
+{
+	use namespace disp;
+	use namespace math; # for min, max
+	dx = Integer(dx);
+	dy = Integer(dy);
+
+
+	var l = 1, r = 1;
+	var t = 1+2, b = 3*gui.guiScale/disp.dispScale;
+	
+	
+	var px = thePlayer.x;
+	var py = thePlayer.y;
+
+	var nOffX = Integer(min(max(px-disp.dispCols+r+1, disp.offX+dx), px-l));
+	var nOffY = Integer(min(max(py-disp.dispRows+b+1, disp.offY+dy), py-t));
+	#var nOffY = disp.offY+dy;
+	
+	
+	#if thePlayer.x < offX + l              then doScroll = true;
+	#else if thePlayer.x > offX+dispCols-r  then doScroll = true;
+	
+	#if py < offY + t              then doScroll = true;
+	#else if py > offY+dispRows-b  then doScroll = true;
+
+
+	if disp.offX == nOffX and disp.offY == nOffY then return;
+	
+	for var e in theWorld.entities do e.markBackgroundDirty();
+	dx = nOffX - disp.offX; dy = nOffY - disp.offY;
+	disp.offX = nOffX; disp.offY = nOffY;
+	if selX != null then { selX += dx; selY += dy; }
+	dispWorld.markCompletelyDirty();
+	entityDisp.markCompletelyDirty();
+}
+
+function scrollTo(x, y)
+{
+	scroll(x-disp.dispCols//2-disp.offX, y-disp.dispRows//2-disp.offY);
+	
+}
+
+
+var lastUpdateTime = time();
+
+
+function updatePlayerScroll()
+{
+	use namespace disp;
+	
+	
+	var px = thePlayer.x;
+	var py = thePlayer.y;
+	
+	#var r = 1;#math.min((dispCols+3) // 4, (dispRowsX+3) // 4);
+	#var d = 1;#math.min((dispCols+2) // 3, (dispRowsX+2) // 3);
+	var l = 1, r = 1;
+	var t = 1+2, b = 3*gui.guiScale/disp.dispScale;
+
+	var doScroll = false;
+
+	if px < offX + l              then doScroll = true;
+	else if px > offX+dispCols-r  then doScroll = true;
+	
+	if py < offY + t              then doScroll = true;
+	else if py > offY+dispRows-b  then doScroll = true;
+	
+	if doScroll then
+		scrollTo(px, py);
+}
+
+
