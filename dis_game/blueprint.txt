@@ -12,6 +12,7 @@ blocks.tscript#behavior
 disp.tscript#fwd
 entities.tscript#disp
 inventory.tscript#base
+recipies.tscript
 entities.tscript#main
 world.tscript#disp
 gui.tscript#fwd

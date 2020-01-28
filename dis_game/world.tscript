@@ -1098,8 +1098,8 @@ namespace world
 	{
 		var p = entities.EntityPlayer(0, -16);
 		{
-			p.collectItem(blocks.sapling);
-			p.collectItem(blocks.planks, 999);
+			#p.collectItem(blocks.sapling);
+			#p.collectItem(blocks.planks, 999);
 			p.collectItem(blocks.bricks, 999);
 
 			#p.collectItem(blocks.water, 69);

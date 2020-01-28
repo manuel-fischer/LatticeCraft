@@ -46,11 +46,44 @@ namespace inventory
 		}
 		
 	}
+	
+	namespace util {
+		
+		# returns [li, ti, ri, bi] -- the boundaries of occupied slots,
+		# [li, ri)
+		# [ti, bi)
+		function occupiedRect(slots, xd, yd)
+		{
+			#assert(slots.size() == xd*yd, "slots should be array of length xd*yd");
+		
+			# 1. find out left most, top most, right most, bottom most filled slot
+			var li = xd, ti = yd, ri = 0, bi = 0;
+			var hasNonNull = false;
+
+			var i = 0;
+			for var y in 0:yd do
+			for var x in 0:xd do
+			{
+				var slot = slots[i];
+
+				if slot != null then
+				{
+					li = math.min(li, x);
+					ti = math.min(ti, y);
+					ri = math.max(ri, x);
+					bi = math.max(bi, y);
+					hasNonNull = true;
+				}
+
+				i += 1;
+			}
+			if hasNonNull then return null;
+			return [li, ti, ri+1, bi+1];
+		}
+		
+	}
+	
 }
-
-
-
-
 
 #[section] main
 namespace inventory
