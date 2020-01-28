@@ -17,6 +17,7 @@
 # TODO settings
 #     - if to store unchanged chunks (those chunks might be different in future versions
 #     - if to use RLE compression, (worlds loaded are always loaded with RLE, uncompressed files are by design loadable with RLE)
+# TODO tags for blocks like: solid, replaceableByTree, minableByHand, etc...
 
 namespace settings
 {
@@ -1543,9 +1544,10 @@ namespace inventory
 			return false;
 		}
 		
-		function decrease()
+		function decrease(amount=1)
 		{
-			this.amount -= 1;
+			assert(this.amount >= amount);
+			this.amount -= amount;
 			if this.amount > 0 then return false;
 			return true;
 		}
@@ -1588,17 +1590,17 @@ namespace inventory
 
 				i += 1;
 			}
-			if hasNonNull then return null;
-			return [li, ti, ri+1, bi+1];
+			if hasNonNull then return [li, ti, ri+1, bi+1];
+			return null;
 		}
 		
 	}
 	
 }
 
-#[file] recipies.tscript
+#[file] recipes.tscript
 
-namespace recipies
+namespace recipes
 {
 	# key: dimensions of recipe
 	var registeredRecipes = {};
@@ -1607,11 +1609,12 @@ namespace recipies
 	class Recipe
 	{
 	public:
-		var result, predicates;
+		var result, predicates, consume;
 	
-		constructor(result, predicates)
+		constructor(result, predicates, consume)
 		{
 			this.result = result; this.predicates = predicates;
+			this.consume = consume;
 		}
 		
 		function checkAt(slots, xd, yd, li, ti, ri, bi)
@@ -1632,10 +1635,34 @@ namespace recipies
 			}
 			return true;
 		}
+		
+		function consumeAt(slots, xd, yd, li, ti, ri, bi, onConsume)
+		{
+			var ii = li + ti*xd;
+			var stride = xd-ri+li;
+			var pi = 0;
+			for var y in ti:bi do
+			{
+				for var x in li:ri do
+				{
+					if consume[pi] != 0 then
+					{
+						if slots[ii].decrease(consume[pi]) then
+							slots[ii] = null;
+							
+						onConsume(ii);
+					}
+					
+					ii += 1;
+					pi += 1;
+				}
+				ii += stride;
+			}
+		}
 	}
 	
 	# arrayPredicates is an one dimensional array of length x*y
-	function registerImpl(itemStack, xd, yd, arrayPredicates)
+	function registerImpl(itemStack, xd, yd, arrayPredicates, arrayConsume)
 	{
 		var dimensions = xd+"*"+yd;
 		var arr = [];
@@ -1644,7 +1671,7 @@ namespace recipies
 		else
 			registeredRecipes[dimensions] = arr;
 			
-		arr.push([itemStack, arrayPredicates]);
+		arr.push(Recipe(itemStack, arrayPredicates, arrayConsume));
 	}
 	
 	# pattern: array of strings, each string represents a line in the crafting table
@@ -1658,28 +1685,36 @@ namespace recipies
 			assert(l.size() == xd, "Lines in recipe pattern should be of equal length");
 		
 		var arrayPredicates = [];
+		var arrayConsume = [];
 		for var l in pattern do
 		for var c in l.split("") do
 		{
 			var pred = function(stack) { return stack == null; };
+			var consume = 0;
 			if map.has(c) then
+			{
 				pred = function[item=map[c]](stack) {
 					if stack != null then return stack.item == item;
 					return false;
 				};
+				consume = 1;
+			}
 				
 			arrayPredicates.push(pred);
+			arrayConsume.push(consume);
 		}	
 		
 		var itemStack = inventory.ItemStack(amount, item);
 		
 		
-		registerImpl(itemStack, xd, yd, arrayPredicates);
+		registerImpl(itemStack, xd, yd, arrayPredicates, arrayConsume);
 	}
 	
 	
-	function getRecipe(slots, xd, yd) {
+	function getRecipe(slots, xd, yd)
+	{
 		use namespace inventory.util;
+		
 		var o = occupiedRect(slots, xd, yd);
 		if o == null then return null;
 		var li = o[0], ti = o[1], ri = o[2], bi = o[3];
@@ -1697,8 +1732,18 @@ namespace recipies
 		}
 		return null;
 	}
+	
 	# consumes items in the item slots of the crafting slots
-	##function consumeRecipe(slots, xd, yd) {}
+	function consumeRecipe(slots, xd, yd, recipe, onConsume)
+	{
+		use namespace inventory.util;
+		
+		assert(recipe != null);
+		var o = occupiedRect(slots, xd, yd);
+		assert(o != null);
+		
+		recipe.consumeAt(slots, xd, yd, o[0], o[1], o[2], o[3], onConsume);
+	}
 	
 	registerRecipe(4, blocks.planks,
 		["X"],
@@ -3054,6 +3099,20 @@ namespace gui
 			}	
 		}
 		
+		# used to cleanly render ontop of old image
+		# this enshures, that the frame of the control looks nice
+		function clearFrameBackground(parentDirty)
+		{
+			if parentDirty then return;
+			#var l = Integer(x*guiScale), t = Integer(y*guiScale);
+			#var r = -Integer(-(x+width)*guiScale), b = -Integer(-(y+height)*guiScale);
+			
+			canvas.setLineColor(0.2, 0.2, 0.2, 1);
+			canvas.setLineWidth(2);
+			#canvas.fillRect(l, t, r-l, b-t);
+			canvas.frameRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
+		}
+		
 		function doCanvasShift()
 		{
 			canvas.shift(x*guiScale, y*guiScale);
@@ -3066,6 +3125,7 @@ namespace gui
 		
 		function render(parentDirty) {}
 	}
+	#class Control
 	
 	class ControlSlider : Control
 	{
@@ -3100,6 +3160,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			canvas.setFillColor(0.1, 0.1, 0.1);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 			
@@ -3124,7 +3186,10 @@ namespace gui
 			var ll = (value-min)/(max-min)*ww;
 			
 			canvas.setFillColor(1, 1, 1);
-			canvas.fillRect((x+ll)*guiScale, y*guiScale, buttonWidth*guiScale, height*guiScale);
+			if hasFocus then
+				canvas.fillRect((x+ll)*guiScale, (y+1/26)*guiScale, buttonWidth*guiScale, (height-2/26)*guiScale);
+			else
+				canvas.fillRect((x+ll)*guiScale, y*guiScale, buttonWidth*guiScale, height*guiScale);
 		}
 		
 		function scrollTo(event)
@@ -3220,6 +3285,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			if pressed then canvas.setFillColor(1, 1, 1);
 			else            canvas.setFillColor(0.3, 0.3, 0.3);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
@@ -3310,6 +3377,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			canvas.setFillColor(0.1, 0.1, 0.1);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 			
@@ -3471,6 +3540,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			canvas.setFillColor(0.1, 0.1, 0.1);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 			
@@ -3908,12 +3979,12 @@ namespace gui
 			this.rows = rows;
 			
 			if onItemSelect == null then
-				this.onItemSelect = function(self, index, stack) { return true; };
+				this.onItemSelect = function(self, index, stack, button) { return true; };
 			else
 				this.onItemSelect = onItemSelect;
 				
 			if onItemDeselect == null then
-				this.onItemDeselect = function(self) {};
+				this.onItemDeselect = function(self, button) {};
 			else
 				this.onItemDeselect = onItemDeselect;
 			
@@ -3932,14 +4003,14 @@ namespace gui
 		
 		
 		
-		function handleItemSelect(slotIndex)
+		function handleItemSelect(slotIndex, button)
 		{
-			return onItemSelect(this, slots, slotIndex);
+			return onItemSelect(this, slots, slotIndex, button);
 		}
 		
-		function handleItemDeselect()
+		function handleItemDeselect(button)
 		{
-			return onItemDeselect(this);	
+			return onItemDeselect(this, button);	
 		}
 		
 		
@@ -3962,7 +4033,7 @@ namespace gui
 			{
 				markSlotDirty(currentSlot);
 				markSlotDirty(newSlot);
-				var chgx = handleItemSelect(newSlot);
+				var chgx = handleItemSelect(newSlot, event.button);
 				if chgx == null then
 					currentSlot = null;
 				else if chgx == true then
@@ -3972,7 +4043,7 @@ namespace gui
 			else
 			{
 				markSlotDirty(currentSlot);
-				handleItemDeselect();
+				handleItemDeselect(event.button);
 				currentSlot = null;
 				return true;
 			}
@@ -3982,7 +4053,11 @@ namespace gui
 		{
 			if event.key == "Enter" then
 			{
-				return handleItemSelect(currentSlot);
+				return handleItemSelect(currentSlot, "left");
+			}
+			if event.key == " " then
+			{
+				return handleItemSelect(currentSlot, "right");
 			}
 				
 			
@@ -4179,6 +4254,7 @@ namespace gui
 		var slots;
 		var hotbarSize, backpackSize;
 		var selectedPanel, selectedSlotIndex;
+		var currentRecipe = null;
 		
 		constructor(slots, hotbarSize, backpackSize)
 			: super(
@@ -4195,7 +4271,9 @@ namespace gui
 					panCrafted: ItemPanel(
 						x=0.5 + 1.125*6, y=2.25+1.125*0.5,
 						cols=1, rows=1,
-						slots=[null]
+						slots=[null],
+						onItemSelect=this.panelOnItemSelectX,
+						onItemDeselect=this.panelOnItemDeselect
 					),
 					panInventory: ItemPanel(
 						x=0.5, y=2.25+2*1.125+0.5,
@@ -4216,7 +4294,48 @@ namespace gui
 			this.backpackSize = backpackSize;
 		}
 		
-		function panelOnItemSelect(panCtrl, slots, slotIndex)
+		
+		function updateRecipe()
+		{
+			var panCrafting = controls["panCrafting"];
+			var panCrafted  = controls["panCrafted"];
+			
+			currentRecipe = recipes.getRecipe(panCrafting.slots, 2, 2);
+			if currentRecipe == null then
+				panCrafted.slots[0] = null;
+			else
+				panCrafted.slots[0] = currentRecipe.result.copy();
+				
+			panCrafted.markSlotDirty(0);
+			markDirtyCtrl(panCrafted);
+		}
+		
+		
+		#function panelOnCraft(panCtrl, slots, slotIndex)
+		#{
+		#	var panCrafting = controls["panCrafting"];
+		#	recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe, 
+		#		panCrafting.markSlotDirty
+		#	);
+		#	markDirtyCtrl(panCrafting);
+		#	updateRecipe();	
+		#}
+		
+		function panelOnItemSelectX(panCtrl, slots, slotIndex, button)
+		{
+			if selectedPanel != null then
+			{
+				selectedPanel.markSlotDirty(selectedSlotIndex);
+				selectedPanel.currentSlot = null;
+				markDirtyCtrl(selectedPanel);
+			}
+			
+			selectedPanel = panCtrl;
+			selectedSlotIndex = slotIndex;
+			return true;
+		}
+		
+		function panelOnItemSelect(panCtrl, slots, slotIndex, button)
 		{
 			if selectedPanel == null then
 			{
@@ -4237,6 +4356,20 @@ namespace gui
 			}
 			else
 			{
+				var isCrafting = false;
+				var keepSelection = false;
+				if currentRecipe != null then
+				if selectedPanel == controls["panCrafted"] then
+				{
+					var panCrafting = controls["panCrafting"];
+					recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe,
+					                      panCrafting.markSlotDirty);
+					markDirtyCtrl(panCrafting);
+					
+					isCrafting = true;
+					keepSelection = true;
+				}
+				
 				var a = panCtrl.slots[slotIndex];
 				var b = selectedPanel.slots[selectedSlotIndex];
 				var addItemAmount = false;
@@ -4244,27 +4377,49 @@ namespace gui
 				
 				if addItemAmount then
 				{
-					selectedPanel.slots[selectedSlotIndex] = null;
-					panCtrl.slots[slotIndex].increase(b.amount);	
+					if button == "right" and not isCrafting then
+					{
+						if selectedPanel.slots[selectedSlotIndex].decrease() then
+							selectedPanel.slots[selectedSlotIndex] = null;
+						panCtrl.slots[slotIndex].increase(1);
+						keepSelection = true;
+					}
+					else
+					{
+						selectedPanel.slots[selectedSlotIndex] = null;
+						panCtrl.slots[slotIndex].increase(b.amount);	
+					}
 				}
 				else
 				{
-					selectedPanel.slots[selectedSlotIndex] = a;
-					panCtrl.slots[slotIndex] = b;
+					if button == "right" and a == null and b != null and not isCrafting then
+					{
+						if selectedPanel.slots[selectedSlotIndex].decrease() then
+							selectedPanel.slots[selectedSlotIndex] = null;
+						panCtrl.slots[slotIndex] = inventory.ItemStack(1, b.item);
+						keepSelection = true;
+					}
+					else
+					{
+						selectedPanel.slots[selectedSlotIndex] = a;
+						panCtrl.slots[slotIndex] = b;
+					}
 				}
 				
 				selectedPanel.markSlotDirty(selectedSlotIndex);
-				selectedPanel.currentSlot = null;
+				if not keepSelection then selectedPanel.currentSlot = null;
 				markDirtyCtrl(selectedPanel);
 				
 				panCtrl.markSlotDirty(slotIndex);
 				markDirtyCtrl(panCtrl);
 				
-				selectedPanel = null;
-				return null; # do not select slot
+				updateRecipe();
+				
+				if not keepSelection then selectedPanel = null;
+				return false; #null; # do not select slot
 			}
 		}
-		function panelOnItemDeselect(panCtrl)
+		function panelOnItemDeselect(panCtrl, button)
 		{
 			selectedPanel = null;
 		}

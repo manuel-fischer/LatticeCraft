@@ -16,6 +16,7 @@
 # TODO settings
 #     - if to store unchanged chunks (those chunks might be different in future versions
 #     - if to use RLE compression, (worlds loaded are always loaded with RLE, uncompressed files are by design loadable with RLE)
+# TODO tags for blocks like: solid, replaceableByTree, minableByHand, etc...
 
 namespace settings
 {

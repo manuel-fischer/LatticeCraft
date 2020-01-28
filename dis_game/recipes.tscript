@@ -1,5 +1,5 @@
 
-namespace recipies
+namespace recipes
 {
 	# key: dimensions of recipe
 	var registeredRecipes = {};
@@ -8,11 +8,12 @@ namespace recipies
 	class Recipe
 	{
 	public:
-		var result, predicates;
+		var result, predicates, consume;
 	
-		constructor(result, predicates)
+		constructor(result, predicates, consume)
 		{
 			this.result = result; this.predicates = predicates;
+			this.consume = consume;
 		}
 		
 		function checkAt(slots, xd, yd, li, ti, ri, bi)
@@ -33,10 +34,34 @@ namespace recipies
 			}
 			return true;
 		}
+		
+		function consumeAt(slots, xd, yd, li, ti, ri, bi, onConsume)
+		{
+			var ii = li + ti*xd;
+			var stride = xd-ri+li;
+			var pi = 0;
+			for var y in ti:bi do
+			{
+				for var x in li:ri do
+				{
+					if consume[pi] != 0 then
+					{
+						if slots[ii].decrease(consume[pi]) then
+							slots[ii] = null;
+							
+						onConsume(ii);
+					}
+					
+					ii += 1;
+					pi += 1;
+				}
+				ii += stride;
+			}
+		}
 	}
 	
 	# arrayPredicates is an one dimensional array of length x*y
-	function registerImpl(itemStack, xd, yd, arrayPredicates)
+	function registerImpl(itemStack, xd, yd, arrayPredicates, arrayConsume)
 	{
 		var dimensions = xd+"*"+yd;
 		var arr = [];
@@ -45,7 +70,7 @@ namespace recipies
 		else
 			registeredRecipes[dimensions] = arr;
 			
-		arr.push([itemStack, arrayPredicates]);
+		arr.push(Recipe(itemStack, arrayPredicates, arrayConsume));
 	}
 	
 	# pattern: array of strings, each string represents a line in the crafting table
@@ -59,28 +84,36 @@ namespace recipies
 			assert(l.size() == xd, "Lines in recipe pattern should be of equal length");
 		
 		var arrayPredicates = [];
+		var arrayConsume = [];
 		for var l in pattern do
 		for var c in l.split("") do
 		{
 			var pred = function(stack) { return stack == null; };
+			var consume = 0;
 			if map.has(c) then
+			{
 				pred = function[item=map[c]](stack) {
 					if stack != null then return stack.item == item;
 					return false;
 				};
+				consume = 1;
+			}
 				
 			arrayPredicates.push(pred);
+			arrayConsume.push(consume);
 		}	
 		
 		var itemStack = inventory.ItemStack(amount, item);
 		
 		
-		registerImpl(itemStack, xd, yd, arrayPredicates);
+		registerImpl(itemStack, xd, yd, arrayPredicates, arrayConsume);
 	}
 	
 	
-	function getRecipe(slots, xd, yd) {
+	function getRecipe(slots, xd, yd)
+	{
 		use namespace inventory.util;
+		
 		var o = occupiedRect(slots, xd, yd);
 		if o == null then return null;
 		var li = o[0], ti = o[1], ri = o[2], bi = o[3];
@@ -98,8 +131,18 @@ namespace recipies
 		}
 		return null;
 	}
+	
 	# consumes items in the item slots of the crafting slots
-	##function consumeRecipe(slots, xd, yd) {}
+	function consumeRecipe(slots, xd, yd, recipe, onConsume)
+	{
+		use namespace inventory.util;
+		
+		assert(recipe != null);
+		var o = occupiedRect(slots, xd, yd);
+		assert(o != null);
+		
+		recipe.consumeAt(slots, xd, yd, o[0], o[1], o[2], o[3], onConsume);
+	}
 	
 	registerRecipe(4, blocks.planks,
 		["X"],

@@ -122,6 +122,20 @@ namespace gui
 			}	
 		}
 		
+		# used to cleanly render ontop of old image
+		# this enshures, that the frame of the control looks nice
+		function clearFrameBackground(parentDirty)
+		{
+			if parentDirty then return;
+			#var l = Integer(x*guiScale), t = Integer(y*guiScale);
+			#var r = -Integer(-(x+width)*guiScale), b = -Integer(-(y+height)*guiScale);
+			
+			canvas.setLineColor(0.2, 0.2, 0.2, 1);
+			canvas.setLineWidth(2);
+			#canvas.fillRect(l, t, r-l, b-t);
+			canvas.frameRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
+		}
+		
 		function doCanvasShift()
 		{
 			canvas.shift(x*guiScale, y*guiScale);
@@ -134,6 +148,7 @@ namespace gui
 		
 		function render(parentDirty) {}
 	}
+	#class Control
 	
 	class ControlSlider : Control
 	{
@@ -168,6 +183,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			canvas.setFillColor(0.1, 0.1, 0.1);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 			
@@ -192,7 +209,10 @@ namespace gui
 			var ll = (value-min)/(max-min)*ww;
 			
 			canvas.setFillColor(1, 1, 1);
-			canvas.fillRect((x+ll)*guiScale, y*guiScale, buttonWidth*guiScale, height*guiScale);
+			if hasFocus then
+				canvas.fillRect((x+ll)*guiScale, (y+1/26)*guiScale, buttonWidth*guiScale, (height-2/26)*guiScale);
+			else
+				canvas.fillRect((x+ll)*guiScale, y*guiScale, buttonWidth*guiScale, height*guiScale);
 		}
 		
 		function scrollTo(event)
@@ -288,6 +308,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			if pressed then canvas.setFillColor(1, 1, 1);
 			else            canvas.setFillColor(0.3, 0.3, 0.3);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
@@ -378,6 +400,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			canvas.setFillColor(0.1, 0.1, 0.1);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 			
@@ -539,6 +563,8 @@ namespace gui
 		
 		function render(parentDirty)
 		{
+			clearFrameBackground(parentDirty);
+			
 			canvas.setFillColor(0.1, 0.1, 0.1);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 			

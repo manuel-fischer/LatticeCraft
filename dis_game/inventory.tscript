@@ -32,9 +32,10 @@ namespace inventory
 			return false;
 		}
 		
-		function decrease()
+		function decrease(amount=1)
 		{
-			this.amount -= 1;
+			assert(this.amount >= amount);
+			this.amount -= amount;
 			if this.amount > 0 then return false;
 			return true;
 		}
@@ -77,8 +78,8 @@ namespace inventory
 
 				i += 1;
 			}
-			if hasNonNull then return null;
-			return [li, ti, ri+1, bi+1];
+			if hasNonNull then return [li, ti, ri+1, bi+1];
+			return null;
 		}
 		
 	}
@@ -366,12 +367,12 @@ namespace gui
 			this.rows = rows;
 			
 			if onItemSelect == null then
-				this.onItemSelect = function(self, index, stack) { return true; };
+				this.onItemSelect = function(self, index, stack, button) { return true; };
 			else
 				this.onItemSelect = onItemSelect;
 				
 			if onItemDeselect == null then
-				this.onItemDeselect = function(self) {};
+				this.onItemDeselect = function(self, button) {};
 			else
 				this.onItemDeselect = onItemDeselect;
 			
@@ -390,14 +391,14 @@ namespace gui
 		
 		
 		
-		function handleItemSelect(slotIndex)
+		function handleItemSelect(slotIndex, button)
 		{
-			return onItemSelect(this, slots, slotIndex);
+			return onItemSelect(this, slots, slotIndex, button);
 		}
 		
-		function handleItemDeselect()
+		function handleItemDeselect(button)
 		{
-			return onItemDeselect(this);	
+			return onItemDeselect(this, button);	
 		}
 		
 		
@@ -420,7 +421,7 @@ namespace gui
 			{
 				markSlotDirty(currentSlot);
 				markSlotDirty(newSlot);
-				var chgx = handleItemSelect(newSlot);
+				var chgx = handleItemSelect(newSlot, event.button);
 				if chgx == null then
 					currentSlot = null;
 				else if chgx == true then
@@ -430,7 +431,7 @@ namespace gui
 			else
 			{
 				markSlotDirty(currentSlot);
-				handleItemDeselect();
+				handleItemDeselect(event.button);
 				currentSlot = null;
 				return true;
 			}
@@ -440,7 +441,11 @@ namespace gui
 		{
 			if event.key == "Enter" then
 			{
-				return handleItemSelect(currentSlot);
+				return handleItemSelect(currentSlot, "left");
+			}
+			if event.key == " " then
+			{
+				return handleItemSelect(currentSlot, "right");
 			}
 				
 			
@@ -637,6 +642,7 @@ namespace gui
 		var slots;
 		var hotbarSize, backpackSize;
 		var selectedPanel, selectedSlotIndex;
+		var currentRecipe = null;
 		
 		constructor(slots, hotbarSize, backpackSize)
 			: super(
@@ -653,7 +659,9 @@ namespace gui
 					panCrafted: ItemPanel(
 						x=0.5 + 1.125*6, y=2.25+1.125*0.5,
 						cols=1, rows=1,
-						slots=[null]
+						slots=[null],
+						onItemSelect=this.panelOnItemSelectX,
+						onItemDeselect=this.panelOnItemDeselect
 					),
 					panInventory: ItemPanel(
 						x=0.5, y=2.25+2*1.125+0.5,
@@ -674,7 +682,48 @@ namespace gui
 			this.backpackSize = backpackSize;
 		}
 		
-		function panelOnItemSelect(panCtrl, slots, slotIndex)
+		
+		function updateRecipe()
+		{
+			var panCrafting = controls["panCrafting"];
+			var panCrafted  = controls["panCrafted"];
+			
+			currentRecipe = recipes.getRecipe(panCrafting.slots, 2, 2);
+			if currentRecipe == null then
+				panCrafted.slots[0] = null;
+			else
+				panCrafted.slots[0] = currentRecipe.result.copy();
+				
+			panCrafted.markSlotDirty(0);
+			markDirtyCtrl(panCrafted);
+		}
+		
+		
+		#function panelOnCraft(panCtrl, slots, slotIndex)
+		#{
+		#	var panCrafting = controls["panCrafting"];
+		#	recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe, 
+		#		panCrafting.markSlotDirty
+		#	);
+		#	markDirtyCtrl(panCrafting);
+		#	updateRecipe();	
+		#}
+		
+		function panelOnItemSelectX(panCtrl, slots, slotIndex, button)
+		{
+			if selectedPanel != null then
+			{
+				selectedPanel.markSlotDirty(selectedSlotIndex);
+				selectedPanel.currentSlot = null;
+				markDirtyCtrl(selectedPanel);
+			}
+			
+			selectedPanel = panCtrl;
+			selectedSlotIndex = slotIndex;
+			return true;
+		}
+		
+		function panelOnItemSelect(panCtrl, slots, slotIndex, button)
 		{
 			if selectedPanel == null then
 			{
@@ -695,6 +744,20 @@ namespace gui
 			}
 			else
 			{
+				var isCrafting = false;
+				var keepSelection = false;
+				if currentRecipe != null then
+				if selectedPanel == controls["panCrafted"] then
+				{
+					var panCrafting = controls["panCrafting"];
+					recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe,
+					                      panCrafting.markSlotDirty);
+					markDirtyCtrl(panCrafting);
+					
+					isCrafting = true;
+					keepSelection = true;
+				}
+				
 				var a = panCtrl.slots[slotIndex];
 				var b = selectedPanel.slots[selectedSlotIndex];
 				var addItemAmount = false;
@@ -702,27 +765,49 @@ namespace gui
 				
 				if addItemAmount then
 				{
-					selectedPanel.slots[selectedSlotIndex] = null;
-					panCtrl.slots[slotIndex].increase(b.amount);	
+					if button == "right" and not isCrafting then
+					{
+						if selectedPanel.slots[selectedSlotIndex].decrease() then
+							selectedPanel.slots[selectedSlotIndex] = null;
+						panCtrl.slots[slotIndex].increase(1);
+						keepSelection = true;
+					}
+					else
+					{
+						selectedPanel.slots[selectedSlotIndex] = null;
+						panCtrl.slots[slotIndex].increase(b.amount);	
+					}
 				}
 				else
 				{
-					selectedPanel.slots[selectedSlotIndex] = a;
-					panCtrl.slots[slotIndex] = b;
+					if button == "right" and a == null and b != null and not isCrafting then
+					{
+						if selectedPanel.slots[selectedSlotIndex].decrease() then
+							selectedPanel.slots[selectedSlotIndex] = null;
+						panCtrl.slots[slotIndex] = inventory.ItemStack(1, b.item);
+						keepSelection = true;
+					}
+					else
+					{
+						selectedPanel.slots[selectedSlotIndex] = a;
+						panCtrl.slots[slotIndex] = b;
+					}
 				}
 				
 				selectedPanel.markSlotDirty(selectedSlotIndex);
-				selectedPanel.currentSlot = null;
+				if not keepSelection then selectedPanel.currentSlot = null;
 				markDirtyCtrl(selectedPanel);
 				
 				panCtrl.markSlotDirty(slotIndex);
 				markDirtyCtrl(panCtrl);
 				
-				selectedPanel = null;
-				return null; # do not select slot
+				updateRecipe();
+				
+				if not keepSelection then selectedPanel = null;
+				return false; #null; # do not select slot
 			}
 		}
-		function panelOnItemDeselect(panCtrl)
+		function panelOnItemDeselect(panCtrl, button)
 		{
 			selectedPanel = null;
 		}
