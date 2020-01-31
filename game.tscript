@@ -24,13 +24,9 @@ namespace settings
 	var storeChangedChunksOnly = true;
 }
 
-#var worldSeed = Integer(time()*123456789); # shouldn't be zero
-#print("Seed: " + worldSeed);
-
-namespace force
+namespace forceSettings
 {
 	var dispScale = null; # set to integer
-	var putAirItem = true;
 }
 
 var showChunkBorders = false;
@@ -75,8 +71,6 @@ function renderCredits()
 	# the windows font used in the recent BSOD, otherwise helvetica
 	canvas.setFont("Segoe UI,helvetica", s*3.5);
 	canvas.text(l-0.25*s, 2*s, ":)");
-	
-	#canvas.setTextAlign("center");
 	
 	canvas.setFont("Segoe UI Light,helvetica", s);
 	canvas.text(l-0.05*s, 6*s, "LatticeCraft");
@@ -133,6 +127,7 @@ namespace util
 		}
 		return str + "\"";
 	}
+
 	function jsonToString(json)
 	{
 		if (Type(json) == Array) then
@@ -248,22 +243,6 @@ namespace canvasUtil
 	if noBevels then {
 		bevel = bevel1;
 		bevel0011 = function() {};
-	}
-	
-	
-	class DefaultCanvas
-	{
-	public:
-		var setFillColor = canvas.setFillColor;
-		var fillRect = canvas.fillRect;
-	}
-	var defaultCanvas = DefaultCanvas();
-	
-	class TexCanvasBakery
-	{
-	public:
-		function setFillColor(r, g, b, a=1) {}
-		function fillRect(x, y, w, h) {}
 	}
 	
 }
@@ -509,11 +488,6 @@ namespace texture
 
 #[file] world.tscript#fwd
 
-#namespace worldCB
-#{
-#	var setBlockFWD;
-#	var setBlockUpdateFWD;
-#}
 namespace theWorldCB
 {
 	var isDirtyCB; # world coords
@@ -538,9 +512,9 @@ namespace entityBehavior
 	
 	function onEntityCollision(a, b)
 	{
-		var eventsig = a+","+b;
-		if collisionBehavior.has(eventsig) then
-			collisionBehavior[eventsig](a, b);
+		var eventsignature = Type(a)+","+Type(b);
+		if collisionBehavior.has(eventsignature) then
+			collisionBehavior[eventsignature](a, b);
 	}
 }
 
@@ -775,7 +749,6 @@ namespace world
 
 
 # TODO move to chunks
-#var allEntities = []; # REMOVE
 
 namespace world
 {
@@ -844,7 +817,8 @@ namespace world
 					var rr = Array(17, 0);
 					rr[0] = r0; rr[16] = r1;
 					
-					var pop = function[rr, rng](a, b, mul)
+					# Populates array recursively
+					var populate = function[rr, rng](a, b, mul)
 					{
 						var h = (a+b) // 2;
 						if b - a == 2 then
@@ -860,7 +834,7 @@ namespace world
 							this(a, h, mul*0.85); this(h, b, mul*0.85);
 						}
 					};
-					pop(0, 16, 0.75);
+					populate(0, 16, 0.75);
 					
 					for x in 0:16 do
 					{
@@ -1098,192 +1072,6 @@ namespace world
 
 
 
-#### BEGIN DELETION SECTION ####
-## namespace theWorld_
-## {
-## 	# A chunk [Blocks... (16*16)]
-## 	# the entities should be stored in a quadtree
-## 	
-## 	function chunkLoc(x, y)
-## 	{
-## 		return x+y*16;
-## 	}
-## 	
-## 	function makeChunk(block=null)
-## 	{
-## 		if block == null then block = blocks.air;
-## 		return Array(16*16, block);
-## 	}
-## 	
-## 	
-## 	function chunkRandom(cx, cy)
-## 	{	
-## 		var r = worldSeed + 10111*cx + 10427*cy;
-## 		r = r xor 123456789;
-## 		if r == 0 then r = worldSeed*123;
-## 		return random.XorShift(r);
-## 	}
-## 	
-## 	# generates base terrain, no structures (this is done by populateChunk
-## 	function generateChunk(x, y)
-## 	{
-## 		if debChunkGen then print("generateChunk("+x+", "+y+") x="+x*16+", y="+y*16);
-## 		
-## 		var rng  = chunkRandom(x,   y);
-## 		var rngR = chunkRandom(x+1, y); 
-## 		
-## 		var block = blocks.air;
-## 		if y >= 0 then block = blocks.stone;
-## 		var chunk = makeChunk(block);
-## 		
-## 		# generate terrain
-## 		
-## 		if y == -1 then # trees
-## 		{	
-## 			var r0 = rng.random();
-## 			var r1 = rngR.random();
-## 			
-## 			var rr = Array(17, 0);
-## 			rr[0] = r0; rr[16] = r1;
-## 			
-## 			var pop = function[rr, rng](a, b, mul)
-## 			{
-## 				var h = (a+b) // 2;
-## 				if b - a == 2 then
-## 				{
-## 					rr[h] = (rr[a] + rr[b]) /2;
-## 				}
-## 				else
-## 				{
-## 					var h = (a+b) // 2;
-## 					var m = (h/16)*(1-mul) + (rng.random())*mul;
-## 					rr[h] = math.min(rr[a]*(1-m) + rr[b]*m + rng.random()*mul*0.2, 1);
-## 
-## 					this(a, h, mul*0.85); this(h, b, mul*0.85);
-## 				}
-## 			};
-## 			pop(0, 16, 0.75);
-## 			
-## 			for x in 0:16 do
-## 			{
-## 				var yy = Integer(rr[x]*15);
-## 				var b = blocks.grass;
-## 				for y in yy:16 do
-## 				{
-## 					chunk[chunkLoc(x, y)] = b;
-## 					b = blocks.dirt;
-## 					if rng.random() < (2*y-yy)/(16+8) then
-## 						b = blocks.stone;
-## 				}
-## 			}
-## 		}
-## 		else if y >= 0 then
-## 		{
-## 			if y % 5 == 1 then
-## 				for y in  1: 3 do
-## 				for x in  0:16 do
-## 					chunk[chunkLoc(x, y)] = blocks.coalOre;
-## 
-## 			var yy = y % 3 + 3;
-## 			for y in  0:16 do
-## 			for x in  0:16 do
-## 			{
-## 				var chance = (y % yy) * (0.7/4) + 0.01;
-## 				if rng.random() < chance then chunk[chunkLoc(x, y)] = blocks.coalOre;
-## 			}
-## 		}
-## 		
-## 		return chunk;
-## 	}
-## 	
-## 	var chunks = {};
-## 	# chunk position is x // 16, y // 16
-## 	namespace getChunk_impl { var lastcx, lastcy, lastChunk; }
-## 	function getChunk(cx, cy)
-## 	{
-## 		use namespace getChunk_impl;
-## 		
-## 		if lastcx == cx and lastcy == cy then return lastChunk;
-## 		
-## 		lastcx = cx; lastcy = cy;
-## 		
-## 		var chunkid = cx + "," + cy;
-## 		if chunks.has(chunkid) then
-## 			lastChunk = chunks[chunkid];
-## 		else
-## 		{
-## 			lastChunk = generateChunk(cx, cy);
-## 			chunks[chunkid] = lastChunk;
-## 		}
-## 		return lastChunk;
-## 	}
-## 	
-## 	var markDirtyCB;
-## 	var isDirtyCB;
-## 	
-## 	function setBlock(x, y, block)
-## 	{
-## 		var chunk = getChunkData(x // 16, y // 16);
-## 		chunk[chunkLoc(x%16, y%16)] = block;
-## 		markDirtyCB(x, y);
-## 	}
-## 	#setBlockFWD = setBlock;
-## 	
-## 	# gibt (blocks.air) zurück, falls block außerhalb des baubereichs
-## 	function getBlock(x, y)
-## 	{
-## 		var chunk = getChunkData(x // 16, y // 16);
-## 		return chunk[chunkLoc(x%16, y%16)];
-## 	}
-## 	
-## 	var blockUpdates = {};
-## 	function update(x, y)
-## 	{
-## 		var blockUpdate = getBlock(x, y).update;
-## 		if blockUpdate != null then
-## 			blockUpdates[x+","+y] = function[blockUpdate, x, y]() { blockUpdate(x, y); };
-## 		else
-## 			blockUpdates.remove(x+","+y);
-## 	}
-## 	function updateNeighbors(x, y)
-## 	{
-## 		                update(x, y-1);
-## 		update(x-1, y);	update(x, y+0); update(x+1, y);
-## 		                update(x, y+1);	
-## 	}
-## 	
-## 	function setBlockUpdate(x, y, block)
-## 	{
-## 		setBlock(x, y, block);
-## 		updateNeighbors(x, y);	
-## 	}
-## 	
-## 	#setBlockUpdateFWD = setBlockUpdate;
-## 	
-## 	function hasSolidBlock(rx, ry)
-## 	{
-## 		for var y in ry do
-## 		for var x in rx do
-## 			if theWorld.getBlock(x, y).solid then return true;
-## 			
-## 		return false;
-## 	}
-## }
-## # namespace world
-
-
-
-# TODO move function somewhere else
-## function hasSolidBlock(rx, ry)
-## {
-## 	for var y in ry do
-## 	for var x in rx do
-## 		if world.getBlock(x, y).solid then return true;
-## 		
-## 	return false;
-## }
-
-
 
 
 
@@ -1510,6 +1298,11 @@ namespace entityDisp
 }
 # namespace entityDisp
 
+
+
+
+
+
 #[file] inventory.tscript#base
 namespace inventory
 {	
@@ -1602,7 +1395,7 @@ namespace inventory
 
 namespace recipes
 {
-	# key: dimensions of recipe
+	# key: dimensions of recipe,  value: all recipes with that dimension
 	var registeredRecipes = {};
 	
 	
@@ -1748,6 +1541,13 @@ namespace recipes
 	registerRecipe(4, blocks.planks,
 		["X"],
 		{X: blocks.log}
+	);
+	
+	# useless recipe
+	registerRecipe(4, blocks.planks,
+		["XX",
+		 "XX"],
+		{X: blocks.planks}
 	);
 }
 
@@ -2403,8 +2203,6 @@ namespace inventory
 	var currentItem = null;
 	var slots;
 	
-	#if force.putAirItem then hotbar[9] = blocks.air;
-	
 	
 	var hotbL, hotbT, hotbR, hotbB, hotbOff;
 	var guiRegionY;
@@ -2471,7 +2269,6 @@ namespace inventory {
 			if item.amount > 1 then
 			{
 				var amountStr = String(item.amount);
-				#var x = hotOff*i*scl;
 
 				if item.amount > 99 then
 				{
@@ -2590,19 +2387,6 @@ namespace inventory {
 	
 	function onMouseDown(x, y)
 	{
-#		if y >= hotbT and y <= hotbB then
-#		{
-#			var xx  = x-hotbL;
-#			var xxr = xx - hotbOff;
-#			for var i in 0:hotbarSize do
-#			{
-#				if xx > i*hotbOff and xxr < i*hotbOff then
-#				{
-#					selectSlot(i);
-#					return;
-#				}
-#			}
-#		}
 		if y >= hotbT then if y < hotbB then
 		if x >= hotbL then if x < hotbR then
 		{
@@ -2659,15 +2443,15 @@ function initScale()
 			canvasVisible = false;
 			return; # canvas not visible
 		}
-		if force.dispScale != null then
-			dispScale = force.dispScale;
+		if forceSettings.dispScale != null then
+			dispScale = forceSettings.dispScale;
 		else
 			dispScale = math.max(canvas.height()//hh, 16);
 	}
 	dispRows = canvas.height()//dispScale + 1;
 	dispCols = canvas.width()//dispScale + 1;
 	
-	# Zentrieren, position in der Mitte beibehalten
+	# keep center position
 	offX = offX + lastDispCols//2 - dispCols//2;
 	offY = offY + lastDispRows//2 - dispRows//2;
 	
@@ -2691,7 +2475,6 @@ function renderWorld()
 	dispWorld.renderWorld();
 	for var e in entityDisp.dirty.values() do e.render();
 	entityDisp.dirty = {};
-	#for var e in theWorld.entities do e.markBackgroundDirty();
 }
 
 function renderSelection()
@@ -2753,15 +2536,6 @@ function scroll(dx, dy)
 
 	var nOffX = Integer(min(max(px-disp.dispCols+r+1, disp.offX+dx), px-l));
 	var nOffY = Integer(min(max(py-disp.dispRows+b+1, disp.offY+dy), py-t));
-	#var nOffY = disp.offY+dy;
-	
-	
-	#if thePlayer.x < offX + l              then doScroll = true;
-	#else if thePlayer.x > offX+dispCols-r  then doScroll = true;
-	
-	#if py < offY + t              then doScroll = true;
-	#else if py > offY+dispRows-b  then doScroll = true;
-
 
 	if disp.offX == nOffX and disp.offY == nOffY then return;
 	
@@ -2823,7 +2597,6 @@ var mouseMode;
 
 function userAction(x, y)
 {
-	#if x == null then { print("x"); return; }
 	
 	if mouseMode == mouseModes.destroy then
 	{
@@ -2834,7 +2607,7 @@ function userAction(x, y)
 			if b.dropChance == 1.0 or math.random() < b.dropChance then
 			{
 				thePlayer.collectItem(drop);
-				#inventory.collect(drop);
+				# TODO what happens when the inventory is full
 			}
 		}
 		theWorld.setBlockUpdate(x, y, blocks.air);
@@ -2845,9 +2618,6 @@ function userAction(x, y)
 		{
 			if inventory.currentItem.place(x, y) then
 				inventory.useCurrent();
-				
-			#theWorld.setBlock(x, y, inventory.currentBlock);
-			#inventory.useCurrent();
 		}
 }
 # function userAction
@@ -2955,20 +2725,14 @@ function updateXY(event)
 #[file] world.tscript#tick
 namespace entityBehavior
 {
-	registerCollision(entities.EntityPlayer, entities.EntityItem, function(p, i)
+	use namespace entities;
+	
+	registerCollision(EntityPlayer, EntityItem, function(p, i)
 		{
 			i.dead = true;
 		}
 	);
 }
-
-#function onEntityCollision(d, e)
-#{
-#	if Type(d) == entities.EntityPlayer and Type(e) == entities.EntityItem then
-#	{
-#		e.dead = true;	
-#	}		
-#}
 
 
 function worldTick()
@@ -2989,8 +2753,7 @@ namespace gui
 	var current = null;
 	var backDirty = false;
 	var modalDirty = false;
-	#var dirty = false; # everything dirty?
-	#function markCompletelyDirty() { dirty = true; }
+	
 	function markModalDirty() { modalDirty = true; }
 	function markBackDirty() { backDirty = true; }
 	
@@ -3019,6 +2782,7 @@ namespace gui
 		else
 		{
 			current.onLostFocus();
+			current.onClose();
 			current = gui;
 			current.onGotFocus();
 			markScreenDirty();
@@ -3028,6 +2792,7 @@ namespace gui
 	function closeModal()
 	{
 		current.onLostFocus();
+		current.onClose();
 		initScale();
 		markCompletelyDirtyScreen();
 		current = null;
@@ -3036,12 +2801,6 @@ namespace gui
 		gui.modalDirty = false;
 	}
 	
-	#*class Point
-	{
-	public:
-		var x, y;
-		constructor(x, y) { this.x = x, this.y = y; }
-	}*#
 	
 	# when an event returns true, the control is marked to be rerendered
 	class Control
@@ -3086,6 +2845,7 @@ namespace gui
 		function onGotFocus() { this.hasFocus=true; return true; }
 		function onLostFocus() { this.hasFocus=false; return true; }
 		
+	protected:
 		function drawFocusRect()
 		{
 			if hasFocus then
@@ -3100,16 +2860,13 @@ namespace gui
 		}
 		
 		# used to cleanly render ontop of old image
-		# this enshures, that the frame of the control looks nice
+		# this enshures, that the rectangular border of the control looks nice
 		function clearFrameBackground(parentDirty)
 		{
 			if parentDirty then return;
-			#var l = Integer(x*guiScale), t = Integer(y*guiScale);
-			#var r = -Integer(-(x+width)*guiScale), b = -Integer(-(y+height)*guiScale);
 			
 			canvas.setLineColor(0.2, 0.2, 0.2, 1);
 			canvas.setLineWidth(2);
-			#canvas.fillRect(l, t, r-l, b-t);
 			canvas.frameRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 		}
 		
@@ -3122,7 +2879,8 @@ namespace gui
 		{
 			canvas.shift(-x*guiScale, -y*guiScale);
 		}
-		
+	public:
+	
 		function render(parentDirty) {}
 	}
 	#class Control
@@ -3191,7 +2949,8 @@ namespace gui
 			else
 				canvas.fillRect((x+ll)*guiScale, y*guiScale, buttonWidth*guiScale, height*guiScale);
 		}
-		
+	
+	protected:
 		function scrollTo(event)
 		{
 			var ww = width-buttonWidth;
@@ -3207,6 +2966,17 @@ namespace gui
 			}
 		}
 		
+		function changeFinish()
+		{
+			if lastValue != null then
+			if lastValue != value then
+			{
+				onChange(value);
+				lastValue = null;	
+			}
+		}
+		
+	public:
 		function onMouseDown(event)
 		{
 			if lastValue == null then lastValue = value;
@@ -3217,16 +2987,6 @@ namespace gui
 		{
 			if event.buttons.size() >= 1 then
 				return scrollTo(event);
-		}
-		
-		function changeFinish()
-		{
-			if lastValue != null then
-			if lastValue != value then
-			{
-				onChange(value);
-				lastValue = null;	
-			}
 		}
 		
 		function onMouseUp(event)
@@ -3419,6 +3179,7 @@ namespace gui
 			undoCanvasShift();
 		}
 		
+	protected:
 		function adjustScroll(keepRelative=false)
 		{
 			var maxEntries = Integer(height//entryHeight);
@@ -3439,7 +3200,8 @@ namespace gui
 				return true;
 			}
 		}
-		
+	
+	public:
 		function onMouseMove(event)
 		{
 			var indx = Integer((event.y/guiScale-y)//entryHeight)+scrollPos;	
@@ -3623,7 +3385,7 @@ namespace gui
 	{
 	public:
 		var controls;
-		var #*completelyDirty,*# dirtyControls;
+		var dirtyControls;
 		var currentIndex=null;
 	
 		constructor(x=0, y=0, width=1, height=1, controls=null)
@@ -3634,14 +3396,9 @@ namespace gui
 			else
 				this.controls = controls;
 				
-			#this.completelyDirty = true;
 			this.dirtyControls = {};
 		}
-# 		function markCompletelyDirty()
-# 		{
-# 			error("Forbidden");
-# 			#completelyDirty = true;
-# 		}
+		
 		function markDirty(index)
 		{
 			var c = controls[index];
@@ -3750,11 +3507,10 @@ namespace gui
 		function render(parentDirty)
 		{
 			doCanvasShift();
-			if #*completelyDirty or*# parentDirty then
+			if parentDirty then
 			{
 				for var c in controls.values() do
 					c.render(true);
-				#completelyDirty = false;
 			}
 			else
 			{
@@ -3785,19 +3541,6 @@ namespace gui
 		}
 		
 		
-		#*function setCanvasTransform()
-		{
-			var ww = width * guiScale;
-			var hh = height * guiScale;
-			
-			var ll = (canvas.width() - ww) / 2;
-			var tt = (canvas.height() - hh) / 2;
-			
-			canvas.reset();
-			canvas.shift(ll, tt);
-			canvas.scale(guiScale);
-		}*#
-		
 		function onMouseDown(event)
 		{
 			if event.buttons.size() == 1 then
@@ -3813,6 +3556,10 @@ namespace gui
 		{
 			updateXY();
 		}
+		
+		# specific ModalGui function
+		# called when gui is closed
+		function onClose() {}
 	}
 	
 	class ModalDlg : ModalGui
@@ -3829,7 +3576,7 @@ namespace gui
 		
 		function render(parentDirty)
 		{
-			if #*completelyDirty or*# parentDirty then
+			if parentDirty then
 			{
 				doCanvasShift();
 				
@@ -3903,25 +3650,14 @@ namespace gui
 		{
 			super.render(parentDirty);
 			
-# 			print("Y");
-			if #*completelyDirty or*# parentDirty then
+			if parentDirty then
 			{
 				doCanvasShift();
 			
 				var s = guiScale;
 				
-				#draw background
-# 				canvas.setFillColor(0.2, 0.2, 0.2, 1);
-# 				canvas.fillRect(0, 0, width*s, height*s);
-				
-# 				canvas.setFillColor(0.3, 0.3, 0.3, 1);
-# 				canvas.fillRect(0, 0, width*s, 1.75*s);
-				
+				#draw captions				
 				canvas.setFillColor(1, 1, 1, 1);
-# 				canvas.setFont("helvetica", guiScale*0.8);
-# 				canvas.setTextAlign("center");
-# 				canvas.text(5*s, 0.5*s, "Settings");
-				
 				
 				canvas.setFont("helvetica", guiScale*0.7);
 				canvas.setTextAlign("left");
@@ -3931,8 +3667,6 @@ namespace gui
 			
 				undoCanvasShift();
 			}
-			
-			#drawFocusRect();
 		}
 	}
 	
@@ -3960,14 +3694,6 @@ namespace gui
 		var slotHighlightFunc;
 		
 		var slotsDirty;
-		
-		#static function rowsOr(slots, cols, rows)
-		#{
-		#	if rows == null then
-		#		return -(-slots.size() // cols); # divide and round up
-		#	else
-		#		return rows;
-		#}
 		
 		constructor(slots, cols, rows, x=0, y=0,
 					onItemSelect=null, onItemDeselect=null, slotHighlightFunc=null)
@@ -4090,8 +3816,6 @@ namespace gui
 			var gs = guiScale;
 			var sc = 1.125*gs;
 
-			#canvas.shift(0.5*s, 2.3*s);
-			#canvas.shift(0.5*gs, 2.25*gs);
 			doCanvasShift();
 			#draw boxes
 			var scl = guiScale;
@@ -4104,15 +3828,11 @@ namespace gui
 					canvas.setFillColor(1, 1, 1, 1);
 				else if slotHighlightFunc(i) then
 					canvas.setFillColor(0.3, 0.3, 0.3, 1);
-					#canvas.setFillColor(0.5, 0.5, 0.5, 1);
 				else
 					canvas.setFillColor(0.15, 0.15, 0.15, 1);
-					#canvas.setFillColor(0.25, 0.25, 0.25, 1);
-					#canvas.setFillColor(0.3, 0.3, 0.3, 1);
 				
 				canvas.fillRect(-0.0625*scl, -0.0625*scl, 1.125*scl, 1.125*scl);
 				canvas.setFillColor(0.1, 0.1, 0.1, 1);
-				#canvas.setFillColor(0.2, 0.2, 0.2, 1);
 				canvas.fillRect(0, 0, scl, scl);
 			};
 			
@@ -4171,20 +3891,6 @@ namespace gui
 						var b = slots[i];
 
 						if b != null then inventory.dispItem.renderAmount(b);
-# 						if b.amount > 1 then
-# 						{
-# 							if b.amount > 99 then
-# 							{
-# 								canvas.setFont("helvetica", gui.guiScale*1/2);
-# 								# bold font, by multiple rendering
-# 								canvas.text(0, 1*px, String(b.amount));
-# 								canvas.text(0.25*px, 1.25*px, String(b.amount));
-# 								canvas.setFont("helvetica", gui.guiScale*2/3);
-# 							}
-# 							else
-# 								canvas.text(0, 0, String(b.amount));
-# 						}
-
 
 						x += 1;
 						canvas.shift(sc, 0);
@@ -4239,8 +3945,6 @@ namespace gui
 			}
 			slotsDirty = {};
 			
-			##canvas.shift(-0.5*gs, -2.3*gs);
-			#canvas.shift(-0.5*gs, -2.25*gs);
 			canvas.shift(-px, -px);
 			undoCanvasShift();
 		}
@@ -4251,12 +3955,13 @@ namespace gui
 	class GuiInventory : ModalDlg
 	{
 	public:
+		var entity;
 		var slots;
 		var hotbarSize, backpackSize;
 		var selectedPanel, selectedSlotIndex;
 		var currentRecipe = null;
 		
-		constructor(slots, hotbarSize, backpackSize)
+		constructor(entity, slots, hotbarSize, backpackSize)
 			: super(
 				caption="Inventory",
 				width=0.5 + 10*1.125 + 0.5, height=2.25+2*1.125+0.5+6*1.125+0.5,
@@ -4289,6 +3994,7 @@ namespace gui
 				}
 			)
 		{
+			this.entity = entity;
 			this.slots = slots;
 			this.hotbarSize = hotbarSize;
 			this.backpackSize = backpackSize;
@@ -4310,17 +4016,8 @@ namespace gui
 			markDirtyCtrl(panCrafted);
 		}
 		
-		
-		#function panelOnCraft(panCtrl, slots, slotIndex)
-		#{
-		#	var panCrafting = controls["panCrafting"];
-		#	recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe, 
-		#		panCrafting.markSlotDirty
-		#	);
-		#	markDirtyCtrl(panCrafting);
-		#	updateRecipe();	
-		#}
-		
+			
+		# Selection of the crafted slot
 		function panelOnItemSelectX(panCtrl, slots, slotIndex, button)
 		{
 			if selectedPanel != null then
@@ -4339,13 +4036,14 @@ namespace gui
 		{
 			if selectedPanel == null then
 			{
+				# Select new slot
 				selectedPanel = panCtrl;
 				selectedSlotIndex = slotIndex;
 				return true;
 			}
 			else if selectedPanel.slots[selectedSlotIndex] == null then
 			{	
-				
+				# Select new slot, old selected slot was empty
 				selectedPanel.markSlotDirty(selectedSlotIndex);
 				selectedPanel.currentSlot = null;
 				markDirtyCtrl(selectedPanel);
@@ -4356,72 +4054,115 @@ namespace gui
 			}
 			else
 			{
-				var isCrafting = false;
-				var keepSelection = false;
-				if currentRecipe != null then
-				if selectedPanel == controls["panCrafted"] then
-				{
-					var panCrafting = controls["panCrafting"];
-					recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe,
-					                      panCrafting.markSlotDirty);
-					markDirtyCtrl(panCrafting);
-					
-					isCrafting = true;
-					keepSelection = true;
-				}
+				# Move slot contents
 				
 				var a = panCtrl.slots[slotIndex];
 				var b = selectedPanel.slots[selectedSlotIndex];
-				var addItemAmount = false;
-				if a != null and b != null and a != b then addItemAmount = a.item == b.item;
+				#assert(b != null);
 				
-				if addItemAmount then
+				if selectedPanel == controls["panCrafted"] then
 				{
-					if button == "right" and not isCrafting then
-					{
-						if selectedPanel.slots[selectedSlotIndex].decrease() then
-							selectedPanel.slots[selectedSlotIndex] = null;
-						panCtrl.slots[slotIndex].increase(1);
-						keepSelection = true;
-					}
+					# Selected slot is the crafted slot, move contents when possible
+					#assert(currentRecipe != null); # slot should be nonempty only when recipe exists
+					
+					if a != null then if a.item != b.item then return; # different items
+					
+					# consume crafting ingredients
+					var panCrafting = controls["panCrafting"];
+					recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe,
+										  panCrafting.markSlotDirty);
+					markDirtyCtrl(panCrafting);
+					
+					
+					# move contents to new slot
+					if a == null then
+						panCtrl.slots[slotIndex] = b;
 					else
+						a.increase(b.amount);
+					panCtrl.markSlotDirty(slotIndex);
+					markDirtyCtrl(panCtrl);
+					
+					
+					# update recipe
+					updateRecipe();
+					
+					if button != "right" then 
 					{
-						selectedPanel.slots[selectedSlotIndex] = null;
-						panCtrl.slots[slotIndex].increase(b.amount);	
+						selectedPanel.currentSlot = null;
+						selectedPanel = null;
 					}
 				}
 				else
 				{
-					if button == "right" and a == null and b != null and not isCrafting then
+					assert(b != null);
+					# Move slot contents to new slot
+					var keepSelection = false;
+
+					var a = panCtrl.slots[slotIndex];
+					var b = selectedPanel.slots[selectedSlotIndex];
+					var addItemAmount = false;
+					if a != null and b != null and a != b then addItemAmount = a.item == b.item;
+
+					if addItemAmount then
 					{
-						if selectedPanel.slots[selectedSlotIndex].decrease() then
+						if button == "right" then
+						{
+							if selectedPanel.slots[selectedSlotIndex].decrease() then
+								selectedPanel.slots[selectedSlotIndex] = null;
+							panCtrl.slots[slotIndex].increase(1);
+							keepSelection = true;
+						}
+						else
+						{
 							selectedPanel.slots[selectedSlotIndex] = null;
-						panCtrl.slots[slotIndex] = inventory.ItemStack(1, b.item);
-						keepSelection = true;
+							panCtrl.slots[slotIndex].increase(b.amount);	
+						}
 					}
 					else
 					{
-						selectedPanel.slots[selectedSlotIndex] = a;
-						panCtrl.slots[slotIndex] = b;
+						if button == "right" and a == null then
+						{
+							if selectedPanel.slots[selectedSlotIndex].decrease() then
+								selectedPanel.slots[selectedSlotIndex] = null;
+							panCtrl.slots[slotIndex] = inventory.ItemStack(1, b.item);
+							keepSelection = true;
+						}
+						else
+						{
+							selectedPanel.slots[selectedSlotIndex] = a;
+							panCtrl.slots[slotIndex] = b;
+						}
 					}
+
+					selectedPanel.markSlotDirty(selectedSlotIndex);
+					if not keepSelection then selectedPanel.currentSlot = null;
+					markDirtyCtrl(selectedPanel);
+
+					panCtrl.markSlotDirty(slotIndex);
+					markDirtyCtrl(panCtrl);
+
+					updateRecipe();
+
+					if not keepSelection then selectedPanel = null;
+					return false; #null; # do not select slot
 				}
-				
-				selectedPanel.markSlotDirty(selectedSlotIndex);
-				if not keepSelection then selectedPanel.currentSlot = null;
-				markDirtyCtrl(selectedPanel);
-				
-				panCtrl.markSlotDirty(slotIndex);
-				markDirtyCtrl(panCtrl);
-				
-				updateRecipe();
-				
-				if not keepSelection then selectedPanel = null;
-				return false; #null; # do not select slot
 			}
 		}
 		function panelOnItemDeselect(panCtrl, button)
 		{
 			selectedPanel = null;
+		}
+		
+		function onClose()
+		{
+			var panCrafting = controls["panCrafting"];
+			for var s in panCrafting.slots do
+			{
+				if s != null then
+				{
+					entity.collectItem(s.item, s.amount);
+				}
+			}
 		}
 		
 		function render(parentDirty)
@@ -4735,26 +4476,6 @@ namespace gamemenu
 				worldlist = load("latticecraft.worldlist");
 				
 			lstWorlds.entries = worldlist;
-			#*
-			for var i in 0:5 do
-			{
-				var worldName = "latticecraft"+i+".world";
-				var worldExists = exists(worldName);
-				if not worldExists and not enableNonexisting then continue;
-				var caption = "World " + i;
-				if not worldExists then caption = "<"+caption+">";
-				
-				controls["cmdSel" + i] = gui.ControlButton(
-					x=0.5,y=2.3+1.125*i,
-					width=9,height=1,
-					caption=caption,
-					onClick=function[onSelect, worldName](){
-						if onSelect(worldName) == true then
-							gui.closeModal();
-					}
-				);
-			}
-			*#
 		}
 		
 		function render(parentDirty)
@@ -5043,7 +4764,8 @@ namespace eventHandlers
 		{
 			if gui.current == null then
 				gui.setModal(gui.GuiInventory(
-					inventory.slots, 
+					thePlayer,
+					inventory.slots,
 					inventory.hotbarSize, 
 					inventory.backpackSize
 				));
@@ -5109,7 +4831,8 @@ namespace eventHandlers
 }
 # namespace eventHandlers
 
-#[file] gamestate.tscript
+
+
 
 
 #[file] main.tscript#main

@@ -66,22 +66,6 @@ namespace canvasUtil
 		bevel0011 = function() {};
 	}
 	
-	
-	class DefaultCanvas
-	{
-	public:
-		var setFillColor = canvas.setFillColor;
-		var fillRect = canvas.fillRect;
-	}
-	var defaultCanvas = DefaultCanvas();
-	
-	class TexCanvasBakery
-	{
-	public:
-		function setFillColor(r, g, b, a=1) {}
-		function fillRect(x, y, w, h) {}
-	}
-	
 }
 # namespace canvasUtil
 

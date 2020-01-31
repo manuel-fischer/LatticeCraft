@@ -23,13 +23,9 @@ namespace settings
 	var storeChangedChunksOnly = true;
 }
 
-#var worldSeed = Integer(time()*123456789); # shouldn't be zero
-#print("Seed: " + worldSeed);
-
-namespace force
+namespace forceSettings
 {
 	var dispScale = null; # set to integer
-	var putAirItem = true;
 }
 
 var showChunkBorders = false;
@@ -74,8 +70,6 @@ function renderCredits()
 	# the windows font used in the recent BSOD, otherwise helvetica
 	canvas.setFont("Segoe UI,helvetica", s*3.5);
 	canvas.text(l-0.25*s, 2*s, ":)");
-	
-	#canvas.setTextAlign("center");
 	
 	canvas.setFont("Segoe UI Light,helvetica", s);
 	canvas.text(l-0.05*s, 6*s, "LatticeCraft");

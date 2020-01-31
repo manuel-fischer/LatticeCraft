@@ -52,26 +52,6 @@ namespace gamemenu
 				worldlist = load("latticecraft.worldlist");
 				
 			lstWorlds.entries = worldlist;
-			#*
-			for var i in 0:5 do
-			{
-				var worldName = "latticecraft"+i+".world";
-				var worldExists = exists(worldName);
-				if not worldExists and not enableNonexisting then continue;
-				var caption = "World " + i;
-				if not worldExists then caption = "<"+caption+">";
-				
-				controls["cmdSel" + i] = gui.ControlButton(
-					x=0.5,y=2.3+1.125*i,
-					width=9,height=1,
-					caption=caption,
-					onClick=function[onSelect, worldName](){
-						if onSelect(worldName) == true then
-							gui.closeModal();
-					}
-				);
-			}
-			*#
 		}
 		
 		function render(parentDirty)

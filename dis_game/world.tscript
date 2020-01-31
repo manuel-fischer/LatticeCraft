@@ -1,10 +1,5 @@
 #[section] fwd
 
-#namespace worldCB
-#{
-#	var setBlockFWD;
-#	var setBlockUpdateFWD;
-#}
 namespace theWorldCB
 {
 	var isDirtyCB; # world coords
@@ -71,7 +66,6 @@ namespace world
 
 
 # TODO move to chunks
-#var allEntities = []; # REMOVE
 
 namespace world
 {
@@ -140,7 +134,8 @@ namespace world
 					var rr = Array(17, 0);
 					rr[0] = r0; rr[16] = r1;
 					
-					var pop = function[rr, rng](a, b, mul)
+					# Populates array recursively
+					var populate = function[rr, rng](a, b, mul)
 					{
 						var h = (a+b) // 2;
 						if b - a == 2 then
@@ -156,7 +151,7 @@ namespace world
 							this(a, h, mul*0.85); this(h, b, mul*0.85);
 						}
 					};
-					pop(0, 16, 0.75);
+					populate(0, 16, 0.75);
 					
 					for x in 0:16 do
 					{
@@ -392,192 +387,6 @@ namespace world
 	}
 }
 
-
-
-#### BEGIN DELETION SECTION ####
-## namespace theWorld_
-## {
-## 	# A chunk [Blocks... (16*16)]
-## 	# the entities should be stored in a quadtree
-## 	
-## 	function chunkLoc(x, y)
-## 	{
-## 		return x+y*16;
-## 	}
-## 	
-## 	function makeChunk(block=null)
-## 	{
-## 		if block == null then block = blocks.air;
-## 		return Array(16*16, block);
-## 	}
-## 	
-## 	
-## 	function chunkRandom(cx, cy)
-## 	{	
-## 		var r = worldSeed + 10111*cx + 10427*cy;
-## 		r = r xor 123456789;
-## 		if r == 0 then r = worldSeed*123;
-## 		return random.XorShift(r);
-## 	}
-## 	
-## 	# generates base terrain, no structures (this is done by populateChunk
-## 	function generateChunk(x, y)
-## 	{
-## 		if debChunkGen then print("generateChunk("+x+", "+y+") x="+x*16+", y="+y*16);
-## 		
-## 		var rng  = chunkRandom(x,   y);
-## 		var rngR = chunkRandom(x+1, y); 
-## 		
-## 		var block = blocks.air;
-## 		if y >= 0 then block = blocks.stone;
-## 		var chunk = makeChunk(block);
-## 		
-## 		# generate terrain
-## 		
-## 		if y == -1 then # trees
-## 		{	
-## 			var r0 = rng.random();
-## 			var r1 = rngR.random();
-## 			
-## 			var rr = Array(17, 0);
-## 			rr[0] = r0; rr[16] = r1;
-## 			
-## 			var pop = function[rr, rng](a, b, mul)
-## 			{
-## 				var h = (a+b) // 2;
-## 				if b - a == 2 then
-## 				{
-## 					rr[h] = (rr[a] + rr[b]) /2;
-## 				}
-## 				else
-## 				{
-## 					var h = (a+b) // 2;
-## 					var m = (h/16)*(1-mul) + (rng.random())*mul;
-## 					rr[h] = math.min(rr[a]*(1-m) + rr[b]*m + rng.random()*mul*0.2, 1);
-## 
-## 					this(a, h, mul*0.85); this(h, b, mul*0.85);
-## 				}
-## 			};
-## 			pop(0, 16, 0.75);
-## 			
-## 			for x in 0:16 do
-## 			{
-## 				var yy = Integer(rr[x]*15);
-## 				var b = blocks.grass;
-## 				for y in yy:16 do
-## 				{
-## 					chunk[chunkLoc(x, y)] = b;
-## 					b = blocks.dirt;
-## 					if rng.random() < (2*y-yy)/(16+8) then
-## 						b = blocks.stone;
-## 				}
-## 			}
-## 		}
-## 		else if y >= 0 then
-## 		{
-## 			if y % 5 == 1 then
-## 				for y in  1: 3 do
-## 				for x in  0:16 do
-## 					chunk[chunkLoc(x, y)] = blocks.coalOre;
-## 
-## 			var yy = y % 3 + 3;
-## 			for y in  0:16 do
-## 			for x in  0:16 do
-## 			{
-## 				var chance = (y % yy) * (0.7/4) + 0.01;
-## 				if rng.random() < chance then chunk[chunkLoc(x, y)] = blocks.coalOre;
-## 			}
-## 		}
-## 		
-## 		return chunk;
-## 	}
-## 	
-## 	var chunks = {};
-## 	# chunk position is x // 16, y // 16
-## 	namespace getChunk_impl { var lastcx, lastcy, lastChunk; }
-## 	function getChunk(cx, cy)
-## 	{
-## 		use namespace getChunk_impl;
-## 		
-## 		if lastcx == cx and lastcy == cy then return lastChunk;
-## 		
-## 		lastcx = cx; lastcy = cy;
-## 		
-## 		var chunkid = cx + "," + cy;
-## 		if chunks.has(chunkid) then
-## 			lastChunk = chunks[chunkid];
-## 		else
-## 		{
-## 			lastChunk = generateChunk(cx, cy);
-## 			chunks[chunkid] = lastChunk;
-## 		}
-## 		return lastChunk;
-## 	}
-## 	
-## 	var markDirtyCB;
-## 	var isDirtyCB;
-## 	
-## 	function setBlock(x, y, block)
-## 	{
-## 		var chunk = getChunkData(x // 16, y // 16);
-## 		chunk[chunkLoc(x%16, y%16)] = block;
-## 		markDirtyCB(x, y);
-## 	}
-## 	#setBlockFWD = setBlock;
-## 	
-## 	# gibt (blocks.air) zurück, falls block außerhalb des baubereichs
-## 	function getBlock(x, y)
-## 	{
-## 		var chunk = getChunkData(x // 16, y // 16);
-## 		return chunk[chunkLoc(x%16, y%16)];
-## 	}
-## 	
-## 	var blockUpdates = {};
-## 	function update(x, y)
-## 	{
-## 		var blockUpdate = getBlock(x, y).update;
-## 		if blockUpdate != null then
-## 			blockUpdates[x+","+y] = function[blockUpdate, x, y]() { blockUpdate(x, y); };
-## 		else
-## 			blockUpdates.remove(x+","+y);
-## 	}
-## 	function updateNeighbors(x, y)
-## 	{
-## 		                update(x, y-1);
-## 		update(x-1, y);	update(x, y+0); update(x+1, y);
-## 		                update(x, y+1);	
-## 	}
-## 	
-## 	function setBlockUpdate(x, y, block)
-## 	{
-## 		setBlock(x, y, block);
-## 		updateNeighbors(x, y);	
-## 	}
-## 	
-## 	#setBlockUpdateFWD = setBlockUpdate;
-## 	
-## 	function hasSolidBlock(rx, ry)
-## 	{
-## 		for var y in ry do
-## 		for var x in rx do
-## 			if theWorld.getBlock(x, y).solid then return true;
-## 			
-## 		return false;
-## 	}
-## }
-## # namespace world
-
-
-
-# TODO move function somewhere else
-## function hasSolidBlock(rx, ry)
-## {
-## 	for var y in ry do
-## 	for var x in rx do
-## 		if world.getBlock(x, y).solid then return true;
-## 		
-## 	return false;
-## }
 
 
 
@@ -852,20 +661,14 @@ namespace dispWorld
 #[section] tick
 namespace entityBehavior
 {
-	registerCollision(entities.EntityPlayer, entities.EntityItem, function(p, i)
+	use namespace entities;
+	
+	registerCollision(EntityPlayer, EntityItem, function(p, i)
 		{
 			i.dead = true;
 		}
 	);
 }
-
-#function onEntityCollision(d, e)
-#{
-#	if Type(d) == entities.EntityPlayer and Type(e) == entities.EntityItem then
-#	{
-#		e.dead = true;	
-#	}		
-#}
 
 
 function worldTick()

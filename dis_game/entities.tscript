@@ -13,9 +13,9 @@ namespace entityBehavior
 	
 	function onEntityCollision(a, b)
 	{
-		var eventsig = a+","+b;
-		if collisionBehavior.has(eventsig) then
-			collisionBehavior[eventsig](a, b);
+		var eventsignature = Type(a)+","+Type(b);
+		if collisionBehavior.has(eventsignature) then
+			collisionBehavior[eventsignature](a, b);
 	}
 }
 
@@ -45,6 +45,11 @@ namespace entityDisp
 	var markCompletelyDirtyScreen = markCompletelyDirty;
 }
 # namespace entityDisp
+
+
+
+
+
 
 #[section] main
 

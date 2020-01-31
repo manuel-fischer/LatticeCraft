@@ -43,6 +43,7 @@ namespace util
 		}
 		return str + "\"";
 	}
+
 	function jsonToString(json)
 	{
 		if (Type(json) == Array) then

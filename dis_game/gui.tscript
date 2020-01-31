@@ -12,8 +12,7 @@ namespace gui
 	var current = null;
 	var backDirty = false;
 	var modalDirty = false;
-	#var dirty = false; # everything dirty?
-	#function markCompletelyDirty() { dirty = true; }
+	
 	function markModalDirty() { modalDirty = true; }
 	function markBackDirty() { backDirty = true; }
 	
@@ -42,6 +41,7 @@ namespace gui
 		else
 		{
 			current.onLostFocus();
+			current.onClose();
 			current = gui;
 			current.onGotFocus();
 			markScreenDirty();
@@ -51,6 +51,7 @@ namespace gui
 	function closeModal()
 	{
 		current.onLostFocus();
+		current.onClose();
 		initScale();
 		markCompletelyDirtyScreen();
 		current = null;
@@ -59,12 +60,6 @@ namespace gui
 		gui.modalDirty = false;
 	}
 	
-	#*class Point
-	{
-	public:
-		var x, y;
-		constructor(x, y) { this.x = x, this.y = y; }
-	}*#
 	
 	# when an event returns true, the control is marked to be rerendered
 	class Control
@@ -109,6 +104,7 @@ namespace gui
 		function onGotFocus() { this.hasFocus=true; return true; }
 		function onLostFocus() { this.hasFocus=false; return true; }
 		
+	protected:
 		function drawFocusRect()
 		{
 			if hasFocus then
@@ -123,16 +119,13 @@ namespace gui
 		}
 		
 		# used to cleanly render ontop of old image
-		# this enshures, that the frame of the control looks nice
+		# this enshures, that the rectangular border of the control looks nice
 		function clearFrameBackground(parentDirty)
 		{
 			if parentDirty then return;
-			#var l = Integer(x*guiScale), t = Integer(y*guiScale);
-			#var r = -Integer(-(x+width)*guiScale), b = -Integer(-(y+height)*guiScale);
 			
 			canvas.setLineColor(0.2, 0.2, 0.2, 1);
 			canvas.setLineWidth(2);
-			#canvas.fillRect(l, t, r-l, b-t);
 			canvas.frameRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
 		}
 		
@@ -145,7 +138,8 @@ namespace gui
 		{
 			canvas.shift(-x*guiScale, -y*guiScale);
 		}
-		
+	public:
+	
 		function render(parentDirty) {}
 	}
 	#class Control
@@ -214,7 +208,8 @@ namespace gui
 			else
 				canvas.fillRect((x+ll)*guiScale, y*guiScale, buttonWidth*guiScale, height*guiScale);
 		}
-		
+	
+	protected:
 		function scrollTo(event)
 		{
 			var ww = width-buttonWidth;
@@ -230,6 +225,17 @@ namespace gui
 			}
 		}
 		
+		function changeFinish()
+		{
+			if lastValue != null then
+			if lastValue != value then
+			{
+				onChange(value);
+				lastValue = null;	
+			}
+		}
+		
+	public:
 		function onMouseDown(event)
 		{
 			if lastValue == null then lastValue = value;
@@ -240,16 +246,6 @@ namespace gui
 		{
 			if event.buttons.size() >= 1 then
 				return scrollTo(event);
-		}
-		
-		function changeFinish()
-		{
-			if lastValue != null then
-			if lastValue != value then
-			{
-				onChange(value);
-				lastValue = null;	
-			}
 		}
 		
 		function onMouseUp(event)
@@ -442,6 +438,7 @@ namespace gui
 			undoCanvasShift();
 		}
 		
+	protected:
 		function adjustScroll(keepRelative=false)
 		{
 			var maxEntries = Integer(height//entryHeight);
@@ -462,7 +459,8 @@ namespace gui
 				return true;
 			}
 		}
-		
+	
+	public:
 		function onMouseMove(event)
 		{
 			var indx = Integer((event.y/guiScale-y)//entryHeight)+scrollPos;	
@@ -646,7 +644,7 @@ namespace gui
 	{
 	public:
 		var controls;
-		var #*completelyDirty,*# dirtyControls;
+		var dirtyControls;
 		var currentIndex=null;
 	
 		constructor(x=0, y=0, width=1, height=1, controls=null)
@@ -657,14 +655,9 @@ namespace gui
 			else
 				this.controls = controls;
 				
-			#this.completelyDirty = true;
 			this.dirtyControls = {};
 		}
-# 		function markCompletelyDirty()
-# 		{
-# 			error("Forbidden");
-# 			#completelyDirty = true;
-# 		}
+		
 		function markDirty(index)
 		{
 			var c = controls[index];
@@ -773,11 +766,10 @@ namespace gui
 		function render(parentDirty)
 		{
 			doCanvasShift();
-			if #*completelyDirty or*# parentDirty then
+			if parentDirty then
 			{
 				for var c in controls.values() do
 					c.render(true);
-				#completelyDirty = false;
 			}
 			else
 			{
@@ -808,19 +800,6 @@ namespace gui
 		}
 		
 		
-		#*function setCanvasTransform()
-		{
-			var ww = width * guiScale;
-			var hh = height * guiScale;
-			
-			var ll = (canvas.width() - ww) / 2;
-			var tt = (canvas.height() - hh) / 2;
-			
-			canvas.reset();
-			canvas.shift(ll, tt);
-			canvas.scale(guiScale);
-		}*#
-		
 		function onMouseDown(event)
 		{
 			if event.buttons.size() == 1 then
@@ -836,6 +815,10 @@ namespace gui
 		{
 			updateXY();
 		}
+		
+		# specific ModalGui function
+		# called when gui is closed
+		function onClose() {}
 	}
 	
 	class ModalDlg : ModalGui
@@ -852,7 +835,7 @@ namespace gui
 		
 		function render(parentDirty)
 		{
-			if #*completelyDirty or*# parentDirty then
+			if parentDirty then
 			{
 				doCanvasShift();
 				
@@ -926,25 +909,14 @@ namespace gui
 		{
 			super.render(parentDirty);
 			
-# 			print("Y");
-			if #*completelyDirty or*# parentDirty then
+			if parentDirty then
 			{
 				doCanvasShift();
 			
 				var s = guiScale;
 				
-				#draw background
-# 				canvas.setFillColor(0.2, 0.2, 0.2, 1);
-# 				canvas.fillRect(0, 0, width*s, height*s);
-				
-# 				canvas.setFillColor(0.3, 0.3, 0.3, 1);
-# 				canvas.fillRect(0, 0, width*s, 1.75*s);
-				
+				#draw captions				
 				canvas.setFillColor(1, 1, 1, 1);
-# 				canvas.setFont("helvetica", guiScale*0.8);
-# 				canvas.setTextAlign("center");
-# 				canvas.text(5*s, 0.5*s, "Settings");
-				
 				
 				canvas.setFont("helvetica", guiScale*0.7);
 				canvas.setTextAlign("left");
@@ -954,8 +926,6 @@ namespace gui
 			
 				undoCanvasShift();
 			}
-			
-			#drawFocusRect();
 		}
 	}
 	

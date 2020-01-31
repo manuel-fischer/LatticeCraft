@@ -26,5 +26,4 @@ inventory.tscript#gui.GuiInventory
 world.tscript#serialization
 gamemenu.tscript
 eventHandlers.tscript
-gamestate.tscript
 main.tscript#main

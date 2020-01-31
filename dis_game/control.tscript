@@ -25,7 +25,6 @@ var mouseMode;
 
 function userAction(x, y)
 {
-	#if x == null then { print("x"); return; }
 	
 	if mouseMode == mouseModes.destroy then
 	{
@@ -36,7 +35,7 @@ function userAction(x, y)
 			if b.dropChance == 1.0 or math.random() < b.dropChance then
 			{
 				thePlayer.collectItem(drop);
-				#inventory.collect(drop);
+				# TODO what happens when the inventory is full
 			}
 		}
 		theWorld.setBlockUpdate(x, y, blocks.air);
@@ -47,9 +46,6 @@ function userAction(x, y)
 		{
 			if inventory.currentItem.place(x, y) then
 				inventory.useCurrent();
-				
-			#theWorld.setBlock(x, y, inventory.currentBlock);
-			#inventory.useCurrent();
 		}
 }
 # function userAction

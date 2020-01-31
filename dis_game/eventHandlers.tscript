@@ -182,7 +182,8 @@ namespace eventHandlers
 		{
 			if gui.current == null then
 				gui.setModal(gui.GuiInventory(
-					inventory.slots, 
+					thePlayer,
+					inventory.slots,
 					inventory.hotbarSize, 
 					inventory.backpackSize
 				));
@@ -247,4 +248,8 @@ namespace eventHandlers
 	});
 }
 # namespace eventHandlers
+
+
+
+
 

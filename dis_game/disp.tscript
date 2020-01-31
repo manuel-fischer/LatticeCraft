@@ -35,15 +35,15 @@ function initScale()
 			canvasVisible = false;
 			return; # canvas not visible
 		}
-		if force.dispScale != null then
-			dispScale = force.dispScale;
+		if forceSettings.dispScale != null then
+			dispScale = forceSettings.dispScale;
 		else
 			dispScale = math.max(canvas.height()//hh, 16);
 	}
 	dispRows = canvas.height()//dispScale + 1;
 	dispCols = canvas.width()//dispScale + 1;
 	
-	# Zentrieren, position in der Mitte beibehalten
+	# keep center position
 	offX = offX + lastDispCols//2 - dispCols//2;
 	offY = offY + lastDispRows//2 - dispRows//2;
 	
@@ -67,7 +67,6 @@ function renderWorld()
 	dispWorld.renderWorld();
 	for var e in entityDisp.dirty.values() do e.render();
 	entityDisp.dirty = {};
-	#for var e in theWorld.entities do e.markBackgroundDirty();
 }
 
 function renderSelection()
@@ -129,15 +128,6 @@ function scroll(dx, dy)
 
 	var nOffX = Integer(min(max(px-disp.dispCols+r+1, disp.offX+dx), px-l));
 	var nOffY = Integer(min(max(py-disp.dispRows+b+1, disp.offY+dy), py-t));
-	#var nOffY = disp.offY+dy;
-	
-	
-	#if thePlayer.x < offX + l              then doScroll = true;
-	#else if thePlayer.x > offX+dispCols-r  then doScroll = true;
-	
-	#if py < offY + t              then doScroll = true;
-	#else if py > offY+dispRows-b  then doScroll = true;
-
 
 	if disp.offX == nOffX and disp.offY == nOffY then return;
 	

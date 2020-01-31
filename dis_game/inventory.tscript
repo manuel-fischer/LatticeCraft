@@ -97,8 +97,6 @@ namespace inventory
 	var currentItem = null;
 	var slots;
 	
-	#if force.putAirItem then hotbar[9] = blocks.air;
-	
 	
 	var hotbL, hotbT, hotbR, hotbB, hotbOff;
 	var guiRegionY;
@@ -165,7 +163,6 @@ namespace inventory {
 			if item.amount > 1 then
 			{
 				var amountStr = String(item.amount);
-				#var x = hotOff*i*scl;
 
 				if item.amount > 99 then
 				{
@@ -284,19 +281,6 @@ namespace inventory {
 	
 	function onMouseDown(x, y)
 	{
-#		if y >= hotbT and y <= hotbB then
-#		{
-#			var xx  = x-hotbL;
-#			var xxr = xx - hotbOff;
-#			for var i in 0:hotbarSize do
-#			{
-#				if xx > i*hotbOff and xxr < i*hotbOff then
-#				{
-#					selectSlot(i);
-#					return;
-#				}
-#			}
-#		}
 		if y >= hotbT then if y < hotbB then
 		if x >= hotbL then if x < hotbR then
 		{
@@ -348,14 +332,6 @@ namespace gui
 		var slotHighlightFunc;
 		
 		var slotsDirty;
-		
-		#static function rowsOr(slots, cols, rows)
-		#{
-		#	if rows == null then
-		#		return -(-slots.size() // cols); # divide and round up
-		#	else
-		#		return rows;
-		#}
 		
 		constructor(slots, cols, rows, x=0, y=0,
 					onItemSelect=null, onItemDeselect=null, slotHighlightFunc=null)
@@ -478,8 +454,6 @@ namespace gui
 			var gs = guiScale;
 			var sc = 1.125*gs;
 
-			#canvas.shift(0.5*s, 2.3*s);
-			#canvas.shift(0.5*gs, 2.25*gs);
 			doCanvasShift();
 			#draw boxes
 			var scl = guiScale;
@@ -492,15 +466,11 @@ namespace gui
 					canvas.setFillColor(1, 1, 1, 1);
 				else if slotHighlightFunc(i) then
 					canvas.setFillColor(0.3, 0.3, 0.3, 1);
-					#canvas.setFillColor(0.5, 0.5, 0.5, 1);
 				else
 					canvas.setFillColor(0.15, 0.15, 0.15, 1);
-					#canvas.setFillColor(0.25, 0.25, 0.25, 1);
-					#canvas.setFillColor(0.3, 0.3, 0.3, 1);
 				
 				canvas.fillRect(-0.0625*scl, -0.0625*scl, 1.125*scl, 1.125*scl);
 				canvas.setFillColor(0.1, 0.1, 0.1, 1);
-				#canvas.setFillColor(0.2, 0.2, 0.2, 1);
 				canvas.fillRect(0, 0, scl, scl);
 			};
 			
@@ -559,20 +529,6 @@ namespace gui
 						var b = slots[i];
 
 						if b != null then inventory.dispItem.renderAmount(b);
-# 						if b.amount > 1 then
-# 						{
-# 							if b.amount > 99 then
-# 							{
-# 								canvas.setFont("helvetica", gui.guiScale*1/2);
-# 								# bold font, by multiple rendering
-# 								canvas.text(0, 1*px, String(b.amount));
-# 								canvas.text(0.25*px, 1.25*px, String(b.amount));
-# 								canvas.setFont("helvetica", gui.guiScale*2/3);
-# 							}
-# 							else
-# 								canvas.text(0, 0, String(b.amount));
-# 						}
-
 
 						x += 1;
 						canvas.shift(sc, 0);
@@ -627,8 +583,6 @@ namespace gui
 			}
 			slotsDirty = {};
 			
-			##canvas.shift(-0.5*gs, -2.3*gs);
-			#canvas.shift(-0.5*gs, -2.25*gs);
 			canvas.shift(-px, -px);
 			undoCanvasShift();
 		}
@@ -639,12 +593,13 @@ namespace gui
 	class GuiInventory : ModalDlg
 	{
 	public:
+		var entity;
 		var slots;
 		var hotbarSize, backpackSize;
 		var selectedPanel, selectedSlotIndex;
 		var currentRecipe = null;
 		
-		constructor(slots, hotbarSize, backpackSize)
+		constructor(entity, slots, hotbarSize, backpackSize)
 			: super(
 				caption="Inventory",
 				width=0.5 + 10*1.125 + 0.5, height=2.25+2*1.125+0.5+6*1.125+0.5,
@@ -677,6 +632,7 @@ namespace gui
 				}
 			)
 		{
+			this.entity = entity;
 			this.slots = slots;
 			this.hotbarSize = hotbarSize;
 			this.backpackSize = backpackSize;
@@ -698,17 +654,8 @@ namespace gui
 			markDirtyCtrl(panCrafted);
 		}
 		
-		
-		#function panelOnCraft(panCtrl, slots, slotIndex)
-		#{
-		#	var panCrafting = controls["panCrafting"];
-		#	recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe, 
-		#		panCrafting.markSlotDirty
-		#	);
-		#	markDirtyCtrl(panCrafting);
-		#	updateRecipe();	
-		#}
-		
+			
+		# Selection of the crafted slot
 		function panelOnItemSelectX(panCtrl, slots, slotIndex, button)
 		{
 			if selectedPanel != null then
@@ -727,13 +674,14 @@ namespace gui
 		{
 			if selectedPanel == null then
 			{
+				# Select new slot
 				selectedPanel = panCtrl;
 				selectedSlotIndex = slotIndex;
 				return true;
 			}
 			else if selectedPanel.slots[selectedSlotIndex] == null then
 			{	
-				
+				# Select new slot, old selected slot was empty
 				selectedPanel.markSlotDirty(selectedSlotIndex);
 				selectedPanel.currentSlot = null;
 				markDirtyCtrl(selectedPanel);
@@ -744,72 +692,115 @@ namespace gui
 			}
 			else
 			{
-				var isCrafting = false;
-				var keepSelection = false;
-				if currentRecipe != null then
-				if selectedPanel == controls["panCrafted"] then
-				{
-					var panCrafting = controls["panCrafting"];
-					recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe,
-					                      panCrafting.markSlotDirty);
-					markDirtyCtrl(panCrafting);
-					
-					isCrafting = true;
-					keepSelection = true;
-				}
+				# Move slot contents
 				
 				var a = panCtrl.slots[slotIndex];
 				var b = selectedPanel.slots[selectedSlotIndex];
-				var addItemAmount = false;
-				if a != null and b != null and a != b then addItemAmount = a.item == b.item;
+				#assert(b != null);
 				
-				if addItemAmount then
+				if selectedPanel == controls["panCrafted"] then
 				{
-					if button == "right" and not isCrafting then
-					{
-						if selectedPanel.slots[selectedSlotIndex].decrease() then
-							selectedPanel.slots[selectedSlotIndex] = null;
-						panCtrl.slots[slotIndex].increase(1);
-						keepSelection = true;
-					}
+					# Selected slot is the crafted slot, move contents when possible
+					#assert(currentRecipe != null); # slot should be nonempty only when recipe exists
+					
+					if a != null then if a.item != b.item then return; # different items
+					
+					# consume crafting ingredients
+					var panCrafting = controls["panCrafting"];
+					recipes.consumeRecipe(panCrafting.slots, 2, 2, currentRecipe,
+										  panCrafting.markSlotDirty);
+					markDirtyCtrl(panCrafting);
+					
+					
+					# move contents to new slot
+					if a == null then
+						panCtrl.slots[slotIndex] = b;
 					else
+						a.increase(b.amount);
+					panCtrl.markSlotDirty(slotIndex);
+					markDirtyCtrl(panCtrl);
+					
+					
+					# update recipe
+					updateRecipe();
+					
+					if button != "right" then 
 					{
-						selectedPanel.slots[selectedSlotIndex] = null;
-						panCtrl.slots[slotIndex].increase(b.amount);	
+						selectedPanel.currentSlot = null;
+						selectedPanel = null;
 					}
 				}
 				else
 				{
-					if button == "right" and a == null and b != null and not isCrafting then
+					assert(b != null);
+					# Move slot contents to new slot
+					var keepSelection = false;
+
+					var a = panCtrl.slots[slotIndex];
+					var b = selectedPanel.slots[selectedSlotIndex];
+					var addItemAmount = false;
+					if a != null and b != null and a != b then addItemAmount = a.item == b.item;
+
+					if addItemAmount then
 					{
-						if selectedPanel.slots[selectedSlotIndex].decrease() then
+						if button == "right" then
+						{
+							if selectedPanel.slots[selectedSlotIndex].decrease() then
+								selectedPanel.slots[selectedSlotIndex] = null;
+							panCtrl.slots[slotIndex].increase(1);
+							keepSelection = true;
+						}
+						else
+						{
 							selectedPanel.slots[selectedSlotIndex] = null;
-						panCtrl.slots[slotIndex] = inventory.ItemStack(1, b.item);
-						keepSelection = true;
+							panCtrl.slots[slotIndex].increase(b.amount);	
+						}
 					}
 					else
 					{
-						selectedPanel.slots[selectedSlotIndex] = a;
-						panCtrl.slots[slotIndex] = b;
+						if button == "right" and a == null then
+						{
+							if selectedPanel.slots[selectedSlotIndex].decrease() then
+								selectedPanel.slots[selectedSlotIndex] = null;
+							panCtrl.slots[slotIndex] = inventory.ItemStack(1, b.item);
+							keepSelection = true;
+						}
+						else
+						{
+							selectedPanel.slots[selectedSlotIndex] = a;
+							panCtrl.slots[slotIndex] = b;
+						}
 					}
+
+					selectedPanel.markSlotDirty(selectedSlotIndex);
+					if not keepSelection then selectedPanel.currentSlot = null;
+					markDirtyCtrl(selectedPanel);
+
+					panCtrl.markSlotDirty(slotIndex);
+					markDirtyCtrl(panCtrl);
+
+					updateRecipe();
+
+					if not keepSelection then selectedPanel = null;
+					return false; #null; # do not select slot
 				}
-				
-				selectedPanel.markSlotDirty(selectedSlotIndex);
-				if not keepSelection then selectedPanel.currentSlot = null;
-				markDirtyCtrl(selectedPanel);
-				
-				panCtrl.markSlotDirty(slotIndex);
-				markDirtyCtrl(panCtrl);
-				
-				updateRecipe();
-				
-				if not keepSelection then selectedPanel = null;
-				return false; #null; # do not select slot
 			}
 		}
 		function panelOnItemDeselect(panCtrl, button)
 		{
 			selectedPanel = null;
+		}
+		
+		function onClose()
+		{
+			var panCrafting = controls["panCrafting"];
+			for var s in panCrafting.slots do
+			{
+				if s != null then
+				{
+					entity.collectItem(s.item, s.amount);
+				}
+			}
 		}
 		
 		function render(parentDirty)

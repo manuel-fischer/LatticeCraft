@@ -1,7 +1,7 @@
 
 namespace recipes
 {
-	# key: dimensions of recipe
+	# key: dimensions of recipe,  value: all recipes with that dimension
 	var registeredRecipes = {};
 	
 	
@@ -147,6 +147,13 @@ namespace recipes
 	registerRecipe(4, blocks.planks,
 		["X"],
 		{X: blocks.log}
+	);
+	
+	# useless recipe
+	registerRecipe(4, blocks.planks,
+		["XX",
+		 "XX"],
+		{X: blocks.planks}
 	);
 }
 
