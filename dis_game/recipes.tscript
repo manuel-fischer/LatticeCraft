@@ -150,7 +150,7 @@ namespace recipes
 	);
 	
 	# useless recipe
-	registerRecipe(4, blocks.planks,
+	registerRecipe(1, blocks.craftingTable,
 		["XX",
 		 "XX"],
 		{X: blocks.planks}

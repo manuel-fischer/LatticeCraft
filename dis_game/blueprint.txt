@@ -8,7 +8,6 @@ blocks.tscript#main
 random.tscript
 control.tscript#fwd
 world.tscript#main
-blocks.tscript#behavior
 disp.tscript#fwd
 entities.tscript#disp
 inventory.tscript#base
@@ -25,5 +24,6 @@ gui.tscript#GuiSettings
 inventory.tscript#gui.GuiInventory
 world.tscript#serialization
 gamemenu.tscript
+blocks.tscript#behavior
 eventHandlers.tscript
 main.tscript#main

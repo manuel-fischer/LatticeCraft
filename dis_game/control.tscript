@@ -25,10 +25,9 @@ var mouseMode;
 
 function userAction(x, y)
 {
-	
+	var b = theWorld.getBlock(x, y);
 	if mouseMode == mouseModes.destroy then
 	{
-		var b = theWorld.getBlock(x, y);
 		var drop = b.drop;
 		if drop != null then
 		{
@@ -41,12 +40,18 @@ function userAction(x, y)
 		theWorld.setBlockUpdate(x, y, blocks.air);
 	}
 	else if mouseMode == mouseModes.place then
+	{
 		if inventory.currentItem != null then
-		if theWorld.getBlock(x, y) == blocks.air then
+		if b == blocks.air then
 		{
 			if inventory.currentItem.place(x, y) then
 				inventory.useCurrent();
+			
+			return;
 		}
+		
+		if b.onClick != null then b.onClick(x, y);
+	}
 }
 # function userAction
 

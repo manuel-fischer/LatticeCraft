@@ -26,6 +26,7 @@ namespace blocks
 		var tick; # function(x, y)
 		var place; # function(x, y) -> Boolean
 		var update; # function(x, y) or null
+		var onClick; # function(x, y)
 		
 		var char; # set by mapCharToBlock
 		
@@ -36,13 +37,15 @@ namespace blocks
 			textureState.renderSky = true;
 		}
 		
-		constructor(texture, 
+		constructor(
+			texture, 
 			drop = true,
 			dropChance = 1.0,
 			solid = true,
 			tick=null,
 			place=null,
-			update=null
+			update=null,
+			onClick=null
 		) {
 			this.render = texture;
 			this.texture = texture;
@@ -69,6 +72,11 @@ namespace blocks
 				this.place = place;
 				
 			this.update=update;
+			
+			if onClick == null then
+				this.onClick = function(x, y) {};
+			else
+				this.onClick = onClick;
 		}
 	}
 	
@@ -90,6 +98,12 @@ namespace blocks
 	var sapling     = mapCharToBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], air.texture), solid=false));
 	var leaves      = mapCharToBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], air.texture), sapling, 0.25, solid=false));
 	var leavesOnLog = mapCharToBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], log.texture), log, solid=false));
+	
+	var craftingTable = mapCharToBlock("C", Block(
+		texture=texture.craftingTable([0.8, 0.7, 0.5], air.texture),
+		solid=false
+	));
+	
 	
 	var glass = mapCharToBlock("_", Block(texture.glass(air.texture)));
 	
@@ -290,6 +304,20 @@ namespace blockBehavior
 		}
 	};
 	blocks.sand.tick = blocks.sand.update;
+	
+	
+	blocks.craftingTable.onClick=function(x, y)
+	{
+		# TODO Open crafting gui here	
+		gui.setModal(gui.GuiInventory(
+			"Crafting Table",
+			thePlayer,
+			inventory.slots,
+			inventory.hotbarSize, 
+			inventory.backpackSize,
+			3, 3
+		));
+	};
 }
 # namespace blockBehavior
 

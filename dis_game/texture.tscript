@@ -224,6 +224,16 @@ namespace texture
 
 		return blocks(color, oreBlocks, background);
 	}
+	
+	function craftingTable(color, background)
+	{
+		var tableBlocks = [
+			        [0, 0, 16, 4],
+			[0, 4, 4, 12], [12, 4, 4, 12]
+		];
+		
+		return blocks(color, tableBlocks, background);
+	}
 }
 # namespace texture
 
