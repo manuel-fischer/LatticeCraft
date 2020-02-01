@@ -22,11 +22,11 @@ namespace gamemenu
 		constructor(caption, onSelect, enableNonexisting)
 			: super(
 				caption=caption,
-				width=10, height=2.3+7+0.5+1+0.5,
+				width=10, height=2.25+7+0.5+1+0.5,
 				controls={
 					lstWorlds: gui.ControlList(
-						x=0.5, y=2.3,
-						width=9, height=7.2,
+						x=0.5, y=2.25,
+						width=9, height=7,
 						emptyText="There are no world saves yet",
 						onSelect=function[onSelect](i, value)
 						{
@@ -34,9 +34,9 @@ namespace gamemenu
 						}
 					),
 					txtWorld: gui.ControlTextInput(
-						x = 0.5, y=9.8,
+						x = 0.5, y=9.75,
 						width=9,
-						promptText="Enter worldname",
+						promptText="Enter world name",
 						onEnter=function[onSelect](value)
 						{
 							if onSelect(value) == true then gui.closeModal();
@@ -69,10 +69,10 @@ namespace gamemenu
 		constructor()
 			: super(
 				caption="Game Menu",
-				width=10, height=9.8,
+				width=10, height=9.75,
 				controls={
 					cmdSave: gui.ControlButton(
-						x=0.5, y=2.3, width=9,
+						x=0.5, y=2.25, width=9,
 						caption="Save World",
 						onClick=function()
 						{
@@ -97,7 +97,7 @@ namespace gamemenu
 						}
 					),
 					cmdLoad: gui.ControlButton(
-						x=0.5, y=3.8, width=9, 
+						x=0.5, y=3.75, width=9, 
 						caption="Load World",
 						onClick=function()
 						{
@@ -123,7 +123,7 @@ namespace gamemenu
 						}
 					),
 					cmdNewWorld: gui.ControlButton(
-						x=0.5, y=5.3, width=9,
+						x=0.5, y=5.25, width=9,
 						caption="New World",
 						onClick=function()
 						{
@@ -132,7 +132,7 @@ namespace gamemenu
 						}
 					),
 					cmdSettings: gui.ControlButton(
-						x=0.5, y=6.8, width=9,
+						x=0.5, y=6.75, width=9,
 						caption="Settings",
 						onClick=function()
 						{
@@ -141,7 +141,7 @@ namespace gamemenu
 						}
 					),
 					cmdQuit: gui.ControlButton(
-						x=0.5, y=8.3, width=9,
+						x=0.5, y=8.25, width=9,
 						caption="Quit",
 						onClick=function()
 						{

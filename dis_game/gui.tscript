@@ -109,13 +109,23 @@ namespace gui
 		{
 			if hasFocus then
 			{
-				var d = guiScale/26;
+				var d = guiScale/32; # /26
 				var dd = d*2;
 				
 				canvas.setLineColor(1, 1, 1);
 				canvas.setLineWidth(dd);
 				canvas.rect(x*guiScale+d, y*guiScale+d, width*guiScale-dd, height*guiScale-dd);	
 			}	
+		}
+		
+		function drawShadow()
+		{
+			# shadow
+			var px = guiScale/64;
+			canvas.setFillColor(0.18, 0.18, 0.18);
+			canvas.fillRect(x*guiScale-2*px, y*guiScale-2*px, width*guiScale+6*px, height*guiScale+6*px);	
+			canvas.setFillColor(0.17, 0.17, 0.17);
+			canvas.fillRect(x*guiScale-px, y*guiScale-px, width*guiScale+3*px, height*guiScale+3*px);	
 		}
 		
 		# used to cleanly render ontop of old image
@@ -306,6 +316,8 @@ namespace gui
 		{
 			clearFrameBackground(parentDirty);
 			
+			#drawShadow();
+			
 			if pressed then canvas.setFillColor(1, 1, 1);
 			else            canvas.setFillColor(0.3, 0.3, 0.3);
 			canvas.fillRect(x*guiScale, y*guiScale, width*guiScale, height*guiScale);
@@ -379,7 +391,7 @@ namespace gui
 		var emptyText;
 		var scrollPos=0;
 		
-		static var entryHeight = 0.9;
+		static var entryHeight = 7/8;#0.9;
 		
 		constructor(entries = [], onSelect = null, emptyText = "",
 					x=0, y=0, width=10, height=1)
@@ -661,6 +673,7 @@ namespace gui
 		function markDirty(index)
 		{
 			var c = controls[index];
+			#assert(Type.isDerivedFrom(Type(c), Control));
 			dirtyControls[c.id] = c;
 			return true;
 		}
@@ -710,8 +723,11 @@ namespace gui
 				updateCurrentControl(event);
 					
 			if currentIndex != null then
+			{
 				if controls[currentIndex].onMouseDown(event)==true then
 					return markDirty(currentIndex);
+			}
+			else return this.onMouseDownBack(event);
 		}
 		
 		function onMouseMove(event)
@@ -761,7 +777,8 @@ namespace gui
 		{
 			for var c in controls.values() do
 				if c.onTimer(event)==true then
-					return markDirty(currentIndex);
+					return markDirtyCtrl(c);
+					#return markDirty(currentIndex);
 		}
 		function render(parentDirty)
 		{
@@ -779,6 +796,8 @@ namespace gui
 			}
 			undoCanvasShift();
 		}
+		
+		function onMouseDownBack(event) {}
 	}
 	# class ControlContainer
 	
@@ -789,8 +808,10 @@ namespace gui
 	
 		function updateXY()
 		{
-			x = (canvas.width()/guiScale - width) / 2;
-			y = (canvas.height()/guiScale - height) / 2;
+			x = ((canvas.width()  -  width*guiScale) // 2) / guiScale;
+			y = ((canvas.height() - height*guiScale) // 2) / guiScale;
+			#x = (canvas.width()/guiScale - width) / 2;
+			#y = (canvas.height()/guiScale - height) / 2;
 		}
 	
 		constructor(width, height, controls=[])
@@ -876,10 +897,10 @@ namespace gui
 		constructor()
 			: super(
 				caption="Settings",
-				width=10, height=7.2,
+				width=10, height=7.25,
 				controls={
 					sclBlockSize: ControlSlider(
-						x=0.5, y=3.2, width=9, 
+						x=0.5, y=3.25, width=9, 
 						min=8, max=100, step=1,
 						value=disp.dispScale,
 						onChange=function(value)
@@ -892,7 +913,7 @@ namespace gui
 						}
 					),
 					sclGuiScale: ControlSlider(
-						x=0.5, y=5.7, width=9, 
+						x=0.5, y=5.75, width=9, 
 						min=16, max=80, step=1,
 						value=guiScale,
 						onChange=function(value)

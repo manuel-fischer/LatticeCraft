@@ -119,14 +119,14 @@ namespace eventHandlers
 			else if k == "+" then
 			{
 				dispScale *= 2;
-				gui.guiScale *= 2;
+				#gui.guiScale *= 2;
 				initScale();
 				markCompletelyDirtyScreen();
 			}		
 			else if k == "-" then
 			{
 				dispScale = math.max(dispScale//2, 8);
-				gui.guiScale = math.max(gui.guiScale//2, 16);
+				#gui.guiScale = math.max(gui.guiScale//2, 16);
 				initScale();
 				markCompletelyDirtyScreen();
 			}		
