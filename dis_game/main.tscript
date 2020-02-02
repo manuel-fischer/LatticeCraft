@@ -49,7 +49,7 @@ function printHelp()
 		"Press short to place blocks, press half a second to destroy blocks\n"
 		"You can drag the mouse to destroy/place multiple blocks\n"
 		"Press [+] to zoom in, press [-] to zoom out\n"
-		"Use [W] [A] [S] [D] to move the player\n"
+		"Use [W] [A] [S] [D] to move the player, use arrows to move the camera\n"
 		"[E] inventory, [O] settings, [Esc] game menu (load/save worlds)\n"
 		"\n"
 		"Note that the canvas window needs to be focused"

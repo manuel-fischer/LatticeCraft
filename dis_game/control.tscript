@@ -41,13 +41,16 @@ function userAction(x, y)
 	}
 	else if mouseMode == mouseModes.place then
 	{
-		if inventory.currentItem != null then
-		if b == blocks.air then
+		var selectedSlot = inventory.slots[inventory.hotbarIndex];
+		if selectedSlot != null then
 		{
-			if inventory.currentItem.place(x, y) then
-				inventory.useCurrent();
-			
-			return;
+			if b == blocks.air then
+			{
+				if selectedSlot.item.place(x, y) then
+					inventory.useCurrent();
+				
+				return;
+			}
 		}
 		
 		if b.onClick != null then b.onClick(x, y);

@@ -149,10 +149,16 @@ namespace recipes
 		{X: blocks.log}
 	);
 	
-	# useless recipe
 	registerRecipe(1, blocks.craftingTable,
 		["XX",
 		 "XX"],
+		{X: blocks.planks}
+	);
+	
+	registerRecipe(1, blocks.chest,
+		["XXX",
+		 "X X",
+		 "XXX"],
 		{X: blocks.planks}
 	);
 }

@@ -181,7 +181,7 @@ namespace eventHandlers
 		else if k == "e" then
 		{
 			if gui.current == null then
-				gui.setModal(gui.GuiInventory(
+				gui.setModal(gui.GuiCraftingInventory(
 					"Inventory",
 					thePlayer,
 					inventory.slots,
@@ -189,7 +189,7 @@ namespace eventHandlers
 					inventory.backpackSize,
 					2, 2
 				));
-			else if Type(gui.current) == gui.GuiInventory then
+			else if Type.isOfType(gui.current, gui.GuiInventory) then
 				gui.closeModal();
 		}
 		else if k == "Escape" then

@@ -27,6 +27,7 @@ namespace blocks
 		var place; # function(x, y) -> Boolean
 		var update; # function(x, y) or null
 		var onClick; # function(x, y)
+		var hasBlockData; # like inventories for chests
 		
 		var char; # set by mapCharToBlock
 		
@@ -45,7 +46,8 @@ namespace blocks
 			tick=null,
 			place=null,
 			update=null,
-			onClick=null
+			onClick=null,
+			hasBlockData=false
 		) {
 			this.render = texture;
 			this.texture = texture;
@@ -77,21 +79,25 @@ namespace blocks
 				this.onClick = function(x, y) {};
 			else
 				this.onClick = onClick;
+				
+			this.hasBlockData = hasBlockData;
 		}
 	}
 	
 	namespace colors
 	{
-		var logColor = [0.5, 0.2, 0.1]; #[0.7, 0.5, 0.1];
+		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
+		var dryDirtColor = [0.7, 0.5, 0.3];
+		var wetDirtColor = [0.5, 0.3, 0.2];
 	}
 	use namespace colors;
 	
 	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
-	var stone = mapCharToBlock("s", Block(texture.solidBevel([0.6, 0.6, 0.6])));
+	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
 	
-	var dirt  = mapCharToBlock("d", Block(texture.solidBevel([0.7, 0.5, 0.3])));
-	var grass = mapCharToBlock("g", Block(texture.solidBevelGrown([0.7, 0.5, 0.3], [0.2, 0.7, 0.3]), drop=dirt));
+	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
+	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
 	
 	var planks      = mapCharToBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
 	var log         = mapCharToBlock("W", Block(texture.log(logColor), solid=false));
@@ -99,8 +105,12 @@ namespace blocks
 	var leaves      = mapCharToBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], air.texture), sapling, 0.25, solid=false));
 	var leavesOnLog = mapCharToBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], log.texture), log, solid=false));
 	
-	var craftingTable = mapCharToBlock("C", Block(
+	var craftingTable = mapCharToBlock("T", Block(
 		texture=texture.craftingTable([0.8, 0.7, 0.5], air.texture),
+		solid=false
+	));
+	var chest = mapCharToBlock("C", Block(
+		texture=texture.chest([0.8, 0.7, 0.5]),
 		solid=false
 	));
 	
@@ -309,13 +319,28 @@ namespace blockBehavior
 	blocks.craftingTable.onClick=function(x, y)
 	{
 		# TODO Open crafting gui here	
-		gui.setModal(gui.GuiInventory(
+		gui.setModal(gui.GuiCraftingInventory(
 			"Crafting Table",
 			thePlayer,
 			inventory.slots,
 			inventory.hotbarSize, 
 			inventory.backpackSize,
 			3, 3
+		));
+	};
+	
+	
+	blocks.chest.onClick=function(x, y)
+	{
+		# TODO Open crafting gui here	
+		gui.setModal(gui.GuiContainerInventory(
+			"Chest",
+			thePlayer,
+			inventory.slots,
+			inventory.hotbarSize, 
+			inventory.backpackSize,
+			Array(10*3),
+			10, 3
 		));
 	};
 }

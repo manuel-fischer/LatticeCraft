@@ -50,7 +50,7 @@ function printHelp()
 		"Press short to place blocks, press half a second to destroy blocks\n"
 		"You can drag the mouse to destroy/place multiple blocks\n"
 		"Press [+] to zoom in, press [-] to zoom out\n"
-		"Use [W] [A] [S] [D] to move the player\n"
+		"Use [W] [A] [S] [D] to move the player, use arrows to move the camera\n"
 		"[E] inventory, [O] settings, [Esc] game menu (load/save worlds)\n"
 		"\n"
 		"Note that the canvas window needs to be focused"
@@ -196,22 +196,22 @@ namespace canvasUtil
 		var ww = w-0.0625;
 		var hh = h-0.125;
 		var yy = y+0.0625;
-		canvas.setFillColor(1, 1, 1, 1);
+		canvas.setFillColor(1, 1, 1, 0.40);
 		canvas.fillRect(x, y, ww, 0.0625);
 		canvas.fillRect(x, yy, 0.0625, hh);
 
-		canvas.setFillColor(0, 0, 0, 0.25);
+		canvas.setFillColor(0, 0, 0, 0.15);
 		canvas.fillRect(x+0.0625, y+h-0.0625, ww, 0.0625);
 		canvas.fillRect(x+ww, yy, 0.0625, hh);
 	}
 	
 	function bevel0011_0()
 	{		
-		canvas.setFillColor(1, 1, 1, 1);
+		canvas.setFillColor(1, 1, 1, 0.40);
 		canvas.fillRect(0,    0, 15/16,  1/16);
 		canvas.fillRect(0, 1/16,  1/16, 14/16);
 
-		canvas.setFillColor(0, 0, 0, 0.25);
+		canvas.setFillColor(0, 0, 0, 0.15);
 		canvas.fillRect( 1/16, 15/16, 15/16,  1/16);
 		canvas.fillRect(15/16,  1/16,  1/16, 14/16);
 	}
@@ -313,7 +313,7 @@ namespace texture
 	}
 	
 	
-	function solidBevelGrown(color, grownColor)
+	#*function solidBevelGrown(color, grownColor)
 	{		
 		return function[color, grownColor]()
 		{
@@ -327,7 +327,7 @@ namespace texture
 			
 			canvasUtil.bevel0011();
 		};
-	}
+	}*#
 	
 	function bevelBlocks(blocks, background)
 	{		
@@ -340,15 +340,33 @@ namespace texture
 		}
 		var comp = util.arrayConcat([
 			[background],
-			[function() { canvas.setFillColor(1, 1, 1, 1); }],
+			[function() { canvas.setFillColor(1, 1, 1, 0.40); }],
 			bevelLightComp,
-			[function() { canvas.setFillColor(0, 0, 0, 0.25); }],
+			[function() { canvas.setFillColor(0, 0, 0, 0.15); }],
 			bevelDarkComp,
 		]);
 		
 		return function[comp]()
 		{
 			for var i in comp do i();
+		};
+	}
+	
+	function fillBlocks(color, blocks, background)
+	{
+		var fillComp = [];
+		for var b in blocks do
+		{
+			var x0 = b[0]/16, y0 = b[1]/16, x1 = b[2]/16, y1 = b[3]/16;
+			fillComp.push(function[x0, y0, x1, y1]() { canvas.fillRect(x0, y0, x1, y1); });
+		}
+		
+		return function[color, fillComp, background]()
+		{
+			background();
+			
+			canvasUtil.setFillColor(color);
+			for var i in fillComp do i();
 		};
 	}
 	
@@ -365,9 +383,9 @@ namespace texture
 		}
 		var comp = util.arrayConcat([
 			fillComp,
-			[function() { canvas.setFillColor(1, 1, 1, 1); }],
+			[function() { canvas.setFillColor(1, 1, 1, 0.40); }],
 			bevelLightComp,
-			[function() { canvas.setFillColor(0, 0, 0, 0.25); }],
+			[function() { canvas.setFillColor(0, 0, 0, 0.15); }],
 			bevelDarkComp,
 		]);
 		
@@ -395,14 +413,25 @@ namespace texture
 	
 	function log(color)
 	{
-		
-		var blocks = [
-			[  0,  0,  16, 16],
-			[1.6,  0,12.8, 16],
-			[4.8,  0, 6.4, 16],
+		var l = [
+			[ 0,  0,  1, 16],
+			
+			[ 5,  4,  1,  7],
+			[ 9,  2,  1,  9],
+			[13, 12,  1,  4],
+			
+			[14,  0,  1, 16],
 		];
 		
-		return bevelBlocks(blocks, solid(color));
+		var d = [
+			[ 2,  1,  1,  6],
+			[ 6,  7,  1,  8],
+			[11,  3,  1,  7],
+			
+			[15,  0,  1, 16],
+		];
+		
+		return fillBlocks([0, 0, 0, 0.4], d, fillBlocks([0, 0, 0, 0.2], l, solid(color)));
 	}
 	
 	
@@ -492,6 +521,101 @@ namespace texture
 		
 		return blocks(color, tableBlocks, background);
 	}
+	
+	function chest(color)
+	{
+		var woodenBlocks = [
+			               [0, 0, 16, 4],
+			[0, 4, 2, 12], [2, 4, 12, 12], [14, 4, 2, 12]
+		];
+		
+		var knob = [
+			[7, 2, 2, 5]	
+		];
+		
+		var wooden = bevelBlocks(woodenBlocks, solid(color));
+		return blocks([0.3, 0.3, 0.3], knob, wooden);
+	}
+	
+	
+	function stone(color)
+	{
+		# light blocks
+		var l = [
+			[2, 1, 9, 1],
+			[5, 7, 11, 1],
+			[0, 11, 7, 1], [13, 11, 3, 1],
+			[7, 15, 5, 1],
+			
+			#[2, 2, 9, 1],
+		];
+		
+		# dark blocks
+		var d = [
+			[9, 0, 4, 1],
+			[5, 3, 9, 1],
+			[0, 5, 3, 1], [12, 5, 4, 1],
+			[2, 9, 10, 1],
+			[1, 13, 13, 1],
+			
+			#[0, 6, 10, 2],
+		];
+		return fillBlocks([0, 0, 0, 0.1], d, fillBlocks([1, 1, 1, 0.2], l, solid(color)));
+	}
+	
+	function dirt(color)
+	{
+		# light blocks
+		var l = [
+			[2, 1, 3, 1],
+			[5, 7, 2, 1],
+			[13, 10, 3, 1],
+			[13, 11, 1, 2],
+			[9, 15, 2, 1]
+			
+			#[2, 2, 9, 1],
+		];
+		
+		# dark blocks
+		var d = [
+			[11, 0, 1, 2],
+			[5, 3, 3, 1],
+			[0, 5, 2, 1],
+			[7, 8, 1, 2],
+			[2, 13, 3, 1],
+			
+			#[0, 6, 10, 2],
+		];
+		return fillBlocks([0, 0, 0, 0.1], d, fillBlocks([1, 1, 1, 0.2], l, solid(color)));
+	}
+	
+	function grown(color, background)
+	{
+		return function[color, background]()
+		{
+			background();
+			
+			canvasUtil.setFillColor(color);
+			canvas.fillRect(0, 0, 1, 4/16);
+			
+			canvas.setFillColor(0, 0, 0, 0.2);
+			canvas.fillRect(0, 3/16, 1, 1/16);
+			
+			canvas.setFillColor(0, 0, 0, 0.1);
+			canvas.fillRect(3/16, 2/16, 1/16, 2/16);
+			canvas.fillRect(7/16, 1/16, 1/16, 3/16);
+			canvas.fillRect(9/16, 2/16, 1/16, 2/16);
+			
+			canvas.setFillColor(1, 1, 1, 0.2);
+			canvas.fillRect(13/16, 0/16, 1/16, 2/16);
+		};
+	}
+	
+	
+	function furnace(background)
+	{
+		# TODO	
+	}
 }
 # namespace texture
 
@@ -560,6 +684,7 @@ namespace blocks
 		var place; # function(x, y) -> Boolean
 		var update; # function(x, y) or null
 		var onClick; # function(x, y)
+		var hasBlockData; # like inventories for chests
 		
 		var char; # set by mapCharToBlock
 		
@@ -578,7 +703,8 @@ namespace blocks
 			tick=null,
 			place=null,
 			update=null,
-			onClick=null
+			onClick=null,
+			hasBlockData=false
 		) {
 			this.render = texture;
 			this.texture = texture;
@@ -610,21 +736,25 @@ namespace blocks
 				this.onClick = function(x, y) {};
 			else
 				this.onClick = onClick;
+				
+			this.hasBlockData = hasBlockData;
 		}
 	}
 	
 	namespace colors
 	{
-		var logColor = [0.5, 0.2, 0.1]; #[0.7, 0.5, 0.1];
+		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
+		var dryDirtColor = [0.7, 0.5, 0.3];
+		var wetDirtColor = [0.5, 0.3, 0.2];
 	}
 	use namespace colors;
 	
 	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
-	var stone = mapCharToBlock("s", Block(texture.solidBevel([0.6, 0.6, 0.6])));
+	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
 	
-	var dirt  = mapCharToBlock("d", Block(texture.solidBevel([0.7, 0.5, 0.3])));
-	var grass = mapCharToBlock("g", Block(texture.solidBevelGrown([0.7, 0.5, 0.3], [0.2, 0.7, 0.3]), drop=dirt));
+	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
+	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
 	
 	var planks      = mapCharToBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
 	var log         = mapCharToBlock("W", Block(texture.log(logColor), solid=false));
@@ -632,8 +762,12 @@ namespace blocks
 	var leaves      = mapCharToBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], air.texture), sapling, 0.25, solid=false));
 	var leavesOnLog = mapCharToBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], log.texture), log, solid=false));
 	
-	var craftingTable = mapCharToBlock("C", Block(
+	var craftingTable = mapCharToBlock("T", Block(
 		texture=texture.craftingTable([0.8, 0.7, 0.5], air.texture),
+		solid=false
+	));
+	var chest = mapCharToBlock("C", Block(
+		texture=texture.chest([0.8, 0.7, 0.5]),
 		solid=false
 	));
 	
@@ -1384,10 +1518,16 @@ namespace recipes
 		{X: blocks.log}
 	);
 	
-	# useless recipe
 	registerRecipe(1, blocks.craftingTable,
 		["XX",
 		 "XX"],
+		{X: blocks.planks}
+	);
+	
+	registerRecipe(1, blocks.chest,
+		["XXX",
+		 "X X",
+		 "XXX"],
 		{X: blocks.planks}
 	);
 }
@@ -2041,7 +2181,6 @@ namespace inventory
 	var hotbarDirty = true;
 	
 	var hotbarIndex = 0;
-	var currentItem = null;
 	var slots;
 	
 	
@@ -2058,14 +2197,9 @@ namespace inventory
 	function bindEntityInventory(entityWithInventory)
 	{
 		slots = entityWithInventory.inventorySlots;
-		if slots[hotbarIndex] != null then
-			currentItem = slots[hotbarIndex].item;
-		else
-			currentItem = null;
 			
 		entityWithInventory.onInventorySlotChanged = function(i, itemstack)
 		{
-			if i == hotbarIndex then currentItem = itemstack.item;
 			if i < hotbarSize then hotbDirty[String(i)] = i;
 		};
 	}
@@ -2087,10 +2221,6 @@ namespace inventory {
 		hotbDirty[String(hotbarIndex)] = hotbarIndex;
 		
 		hotbarIndex = index;
-		if slots[index] != null then
-			currentItem = slots[index].item;
-		else
-			currentItem = null;
 	}
 	
 	namespace dispHotbar
@@ -2239,13 +2369,13 @@ namespace inventory {
 	
 	function useCurrent()
 	{
-		if currentItem != null then
+		if slots[hotbarIndex] != null then
 		{
 			if slots[hotbarIndex].decrease() then
 			{
 				slots[hotbarIndex] = null;
-				currentItem = null;
 			}
+			
 			hotbDirty[String(hotbarIndex)] = hotbarIndex;
 		}
 	}
@@ -2454,13 +2584,16 @@ function userAction(x, y)
 	}
 	else if mouseMode == mouseModes.place then
 	{
-		if inventory.currentItem != null then
-		if b == blocks.air then
+		var selectedSlot = inventory.slots[inventory.hotbarIndex];
+		if selectedSlot != null then
 		{
-			if inventory.currentItem.place(x, y) then
-				inventory.useCurrent();
-			
-			return;
+			if b == blocks.air then
+			{
+				if selectedSlot.item.place(x, y) then
+					inventory.useCurrent();
+				
+				return;
+			}
 		}
 		
 		if b.onClick != null then b.onClick(x, y);
@@ -3893,67 +4026,29 @@ namespace gui
 	public:
 		var entity;
 		var slots;
-		var hotbarSize, backpackSize;
 		var selectedPanel, selectedSlotIndex;
-		var currentRecipe = null;
-		var craftingCols, craftingRows;
+		var panCrafting, panCrafted;
 		
-		constructor(caption, entity, slots, hotbarSize, backpackSize, craftingCols, craftingRows)
+		constructor(caption, entity, width, height, controls, panCrafting, panCrafted)
 			: super(
 				caption=caption,
-				width=0.5 + 10*1.125 + 0.5, height=2.25+craftingRows*1.125+0.5+6*1.125+0.5,
-				controls={
-					panCrafting: ItemPanel(
-						x=0.5 + 1.125*(10-2-craftingCols)/2, y=2.25,
-						cols=craftingCols, rows=craftingRows,
-						slots=Array(craftingCols*craftingRows),
-						onItemSelect=this.panelOnItemSelect,
-						onItemDeselect=this.panelOnItemDeselect
-					),
-					panCrafted: ItemPanel(
-						x=0.5 + 1.125*((10-2-craftingCols)/2+craftingCols+1), y=2.25+1.125*(craftingRows-1)/2,
-						cols=1, rows=1,
-						slots=[null],
-						onItemSelect=this.panelOnItemSelectX,
-						onItemDeselect=this.panelOnItemDeselect
-					),
-					panInventory: ItemPanel(
-						x=0.5, y=2.25+craftingRows*1.125+0.5,
-						cols=10, rows=6,
-						slots=slots,
-						slotHighlightFunc=function[hotbarSize](index)
-						{
-							return index < hotbarSize;	
-						},
-						onItemSelect=this.panelOnItemSelect,
-						onItemDeselect=this.panelOnItemDeselect
-					),
-				}
+				width=width, height=height,
+				controls=controls
 			)
 		{
 			this.entity = entity;
-			this.slots = slots;
-			this.hotbarSize = hotbarSize;
-			this.backpackSize = backpackSize;
-			this.craftingCols = craftingCols; this.craftingRows = craftingRows;
-		}
-		
-		
-		function updateRecipe()
-		{
-			var panCrafting = controls["panCrafting"];
-			var panCrafted  = controls["panCrafted"];
 			
-			currentRecipe = recipes.getRecipe(panCrafting.slots, craftingCols, craftingRows);
-			if currentRecipe == null then
-				panCrafted.slots[0] = null;
-			else
-				panCrafted.slots[0] = currentRecipe.result.copy();
-				
-			panCrafted.markSlotDirty(0);
-			markDirtyCtrl(panCrafted);
+			if panCrafting != null then
+			{
+				this.panCrafting = controls[panCrafting];
+				this.panCrafted = controls[panCrafted];
+			}
 		}
 		
+		
+		# only called, when panCrafting is given
+		function updateRecipe() {}
+		function onCraft(panCtrl, slots, slotIndex, button) {}
 			
 		# Selection of the crafted slot
 		function panelOnItemSelectX(panCtrl, slots, slotIndex, button)
@@ -3998,39 +4093,14 @@ namespace gui
 				var b = selectedPanel.slots[selectedSlotIndex];
 				#assert(b != null);
 				
-				if selectedPanel == controls["panCrafted"] then
+				if panCrafted != null then
+				if selectedPanel == panCrafted then
 				{
-					# Selected slot is the crafted slot, move contents when possible
-					#assert(currentRecipe != null); # slot should be nonempty only when recipe exists
-					
-					if a != null then if a.item != b.item then return; # different items
-					
-					# consume crafting ingredients
-					var panCrafting = controls["panCrafting"];
-					recipes.consumeRecipe(panCrafting.slots, craftingCols, craftingRows, currentRecipe,
-										  panCrafting.markSlotDirty);
-					markDirtyCtrl(panCrafting);
-					
-					
-					# move contents to new slot
-					if a == null then
-						panCtrl.slots[slotIndex] = b;
-					else
-						a.increase(b.amount);
-					panCtrl.markSlotDirty(slotIndex);
-					markDirtyCtrl(panCtrl);
-					
-					
-					# update recipe
-					updateRecipe();
-					
-					if button != "right" then 
-					{
-						selectedPanel.selectedSlot = null;
-						selectedPanel = null;
-					}
+					# subclass call
+					this.onCraft(panCtrl, slots, slotIndex, button);
+					return;
 				}
-				else
+				
 				{
 					assert(b != null);
 					# Move slot contents to new slot
@@ -4079,13 +4149,14 @@ namespace gui
 					panCtrl.markSlotDirty(slotIndex);
 					markDirtyCtrl(panCtrl);
 
-					updateRecipe();
+					this.updateRecipe();
 
 					if not keepSelection then selectedPanel = null;
 					return false; #null; # do not select slot
 				}
 			}
 		}
+		
 		function panelOnItemDeselect(panCtrl, button)
 		{
 			selectedPanel = null;
@@ -4103,6 +4174,110 @@ namespace gui
 				return true;
 			}
 		}
+	}
+	
+	
+	class GuiCraftingInventory : GuiInventory
+	{
+	public:
+		var currentRecipe = null;
+		var craftingCols, craftingRows;
+		
+		
+		#nonsuper slots, hotbarSize, backpackSize, craftingCols, craftingRows
+		constructor(caption, entity, slots, hotbarSize, backpackSize, craftingCols, craftingRows)
+			: super(
+				caption=caption,
+				entity=entity,
+				panCrafting="panCrafting",
+				panCrafted="panCrafted",
+				width=0.5 + 10*1.125 + 0.5, height=2.25+craftingRows*1.125+0.5+6*1.125+0.5,
+				controls={
+					panCrafting: ItemPanel(
+						x=0.5 + 1.125*(10-2-craftingCols)/2, y=2.25,
+						cols=craftingCols, rows=craftingRows,
+						slots=Array(craftingCols*craftingRows),
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panCrafted: ItemPanel(
+						x=0.5 + 1.125*((10-2-craftingCols)/2+craftingCols+1), y=2.25+1.125*(craftingRows-1)/2,
+						cols=1, rows=1,
+						slots=[null],
+						onItemSelect=this.panelOnItemSelectX,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panInventory: ItemPanel(
+						x=0.5, y=2.25+craftingRows*1.125+0.5,
+						cols=10, rows=6,
+						slots=slots,
+						slotHighlightFunc=function[hotbarSize](index)
+						{
+							return index < hotbarSize;	
+						},
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+				}
+			)
+		{
+			this.entity = entity;
+			this.slots = slots;
+			this.craftingCols = craftingCols; this.craftingRows = craftingRows;
+		}
+		
+		
+		function updateRecipe()
+		{
+			if panCrafting == null then return;
+			
+			currentRecipe = recipes.getRecipe(panCrafting.slots, craftingCols, craftingRows);
+			if currentRecipe == null then
+				panCrafted.slots[0] = null;
+			else
+				panCrafted.slots[0] = currentRecipe.result.copy();
+				
+			panCrafted.markSlotDirty(0);
+			markDirtyCtrl(panCrafted);
+		}
+		
+		
+		function onCraft(panCtrl, slots, slotIndex, button)
+		{
+			var a = panCtrl.slots[slotIndex];
+			var b = selectedPanel.slots[selectedSlotIndex];
+				
+			# Selected slot is the crafted slot, move contents when possible
+			#assert(currentRecipe != null); # slot should be nonempty only when recipe exists
+
+			if a != null then if a.item != b.item then return; # different items
+
+			# consume crafting ingredients
+			#var panCrafting = controls["panCrafting"];
+			recipes.consumeRecipe(panCrafting.slots, craftingCols, craftingRows, currentRecipe,
+								  panCrafting.markSlotDirty);
+			markDirtyCtrl(panCrafting);
+
+
+			# move contents to new slot
+			if a == null then
+				panCtrl.slots[slotIndex] = b;
+			else
+				a.increase(b.amount);
+			panCtrl.markSlotDirty(slotIndex);
+			markDirtyCtrl(panCtrl);
+
+
+			# update recipe
+			this.updateRecipe();
+
+			if button != "right" then 
+			{
+				selectedPanel.selectedSlot = null;
+				selectedPanel = null;
+			}
+		}
+		
 		
 		function onClose()
 		{
@@ -4116,16 +4291,18 @@ namespace gui
 			}
 		}
 		
+		
 		function render(parentDirty)
 		{
 			super.render(parentDirty);
 			
 			if parentDirty then
 			{
+				# Draw Arrow
 				doCanvasShift();
 				var gs = guiScale*1.125;
 				var xx = (0.5  + 1.125*((10-2-craftingCols)/2 + craftingCols))*guiScale;
-				var yy = (2.25 + 1.125*(craftingCols-1)/2)*guiScale;
+				var yy = (2.25 + 1.125*(craftingRows-1)/2)*guiScale;
 				canvas.shift(xx, yy);
 				canvas.setFillColor(1, 1, 1);
 				canvas.fillArea([[0.3*gs, 0.3*gs], [0.3*gs, 0.7*gs], [0.7*gs, 0.5*gs]]);
@@ -4135,6 +4312,44 @@ namespace gui
 		}
 	}
 	
+	class GuiContainerInventory : GuiInventory
+	{
+	public:
+	
+		#nonsuper slots, hotbarSize, backpackSize, craftingCols, craftingRows
+		constructor(caption, entity, slots, hotbarSize, backpackSize, containerSlots, containerCols, containerRows)
+			: super(
+				caption=caption,
+				entity=entity,
+				panCrafting=null,
+				panCrafted=null,
+				width=0.5 + 10*1.125 + 0.5, height=2.25+containerRows*1.125+0.5+6*1.125+0.5,
+				controls={
+					panContainer: ItemPanel(
+						x=0.5 + 1.125*(10-containerCols)/2, y=2.25,
+						cols=containerCols, rows=containerRows,
+						slots=containerSlots,
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panInventory: ItemPanel(
+						x=0.5, y=2.25+containerRows*1.125+0.5,
+						cols=10, rows=6,
+						slots=slots,
+						slotHighlightFunc=function[hotbarSize](index)
+						{
+							return index < hotbarSize;	
+						},
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+				}
+			)
+		{
+			this.entity = entity;
+			this.slots = slots;
+		}
+	}
 }
 # namespace gui
 
@@ -4710,13 +4925,28 @@ namespace blockBehavior
 	blocks.craftingTable.onClick=function(x, y)
 	{
 		# TODO Open crafting gui here	
-		gui.setModal(gui.GuiInventory(
+		gui.setModal(gui.GuiCraftingInventory(
 			"Crafting Table",
 			thePlayer,
 			inventory.slots,
 			inventory.hotbarSize, 
 			inventory.backpackSize,
 			3, 3
+		));
+	};
+	
+	
+	blocks.chest.onClick=function(x, y)
+	{
+		# TODO Open crafting gui here	
+		gui.setModal(gui.GuiContainerInventory(
+			"Chest",
+			thePlayer,
+			inventory.slots,
+			inventory.hotbarSize, 
+			inventory.backpackSize,
+			Array(10*3),
+			10, 3
 		));
 	};
 }
@@ -4912,7 +5142,7 @@ namespace eventHandlers
 		else if k == "e" then
 		{
 			if gui.current == null then
-				gui.setModal(gui.GuiInventory(
+				gui.setModal(gui.GuiCraftingInventory(
 					"Inventory",
 					thePlayer,
 					inventory.slots,
@@ -4920,7 +5150,7 @@ namespace eventHandlers
 					inventory.backpackSize,
 					2, 2
 				));
-			else if Type(gui.current) == gui.GuiInventory then
+			else if Type.isOfType(gui.current, gui.GuiInventory) then
 				gui.closeModal();
 		}
 		else if k == "Escape" then

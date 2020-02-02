@@ -17,22 +17,22 @@ namespace canvasUtil
 		var ww = w-0.0625;
 		var hh = h-0.125;
 		var yy = y+0.0625;
-		canvas.setFillColor(1, 1, 1, 1);
+		canvas.setFillColor(1, 1, 1, 0.40);
 		canvas.fillRect(x, y, ww, 0.0625);
 		canvas.fillRect(x, yy, 0.0625, hh);
 
-		canvas.setFillColor(0, 0, 0, 0.25);
+		canvas.setFillColor(0, 0, 0, 0.15);
 		canvas.fillRect(x+0.0625, y+h-0.0625, ww, 0.0625);
 		canvas.fillRect(x+ww, yy, 0.0625, hh);
 	}
 	
 	function bevel0011_0()
 	{		
-		canvas.setFillColor(1, 1, 1, 1);
+		canvas.setFillColor(1, 1, 1, 0.40);
 		canvas.fillRect(0,    0, 15/16,  1/16);
 		canvas.fillRect(0, 1/16,  1/16, 14/16);
 
-		canvas.setFillColor(0, 0, 0, 0.25);
+		canvas.setFillColor(0, 0, 0, 0.15);
 		canvas.fillRect( 1/16, 15/16, 15/16,  1/16);
 		canvas.fillRect(15/16,  1/16,  1/16, 14/16);
 	}

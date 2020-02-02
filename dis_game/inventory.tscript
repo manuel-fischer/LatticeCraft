@@ -94,7 +94,6 @@ namespace inventory
 	var hotbarDirty = true;
 	
 	var hotbarIndex = 0;
-	var currentItem = null;
 	var slots;
 	
 	
@@ -111,14 +110,9 @@ namespace inventory
 	function bindEntityInventory(entityWithInventory)
 	{
 		slots = entityWithInventory.inventorySlots;
-		if slots[hotbarIndex] != null then
-			currentItem = slots[hotbarIndex].item;
-		else
-			currentItem = null;
 			
 		entityWithInventory.onInventorySlotChanged = function(i, itemstack)
 		{
-			if i == hotbarIndex then currentItem = itemstack.item;
 			if i < hotbarSize then hotbDirty[String(i)] = i;
 		};
 	}
@@ -140,10 +134,6 @@ namespace inventory {
 		hotbDirty[String(hotbarIndex)] = hotbarIndex;
 		
 		hotbarIndex = index;
-		if slots[index] != null then
-			currentItem = slots[index].item;
-		else
-			currentItem = null;
 	}
 	
 	namespace dispHotbar
@@ -292,13 +282,13 @@ namespace inventory {
 	
 	function useCurrent()
 	{
-		if currentItem != null then
+		if slots[hotbarIndex] != null then
 		{
 			if slots[hotbarIndex].decrease() then
 			{
 				slots[hotbarIndex] = null;
-				currentItem = null;
 			}
+			
 			hotbDirty[String(hotbarIndex)] = hotbarIndex;
 		}
 	}
@@ -664,67 +654,29 @@ namespace gui
 	public:
 		var entity;
 		var slots;
-		var hotbarSize, backpackSize;
 		var selectedPanel, selectedSlotIndex;
-		var currentRecipe = null;
-		var craftingCols, craftingRows;
+		var panCrafting, panCrafted;
 		
-		constructor(caption, entity, slots, hotbarSize, backpackSize, craftingCols, craftingRows)
+		constructor(caption, entity, width, height, controls, panCrafting, panCrafted)
 			: super(
 				caption=caption,
-				width=0.5 + 10*1.125 + 0.5, height=2.25+craftingRows*1.125+0.5+6*1.125+0.5,
-				controls={
-					panCrafting: ItemPanel(
-						x=0.5 + 1.125*(10-2-craftingCols)/2, y=2.25,
-						cols=craftingCols, rows=craftingRows,
-						slots=Array(craftingCols*craftingRows),
-						onItemSelect=this.panelOnItemSelect,
-						onItemDeselect=this.panelOnItemDeselect
-					),
-					panCrafted: ItemPanel(
-						x=0.5 + 1.125*((10-2-craftingCols)/2+craftingCols+1), y=2.25+1.125*(craftingRows-1)/2,
-						cols=1, rows=1,
-						slots=[null],
-						onItemSelect=this.panelOnItemSelectX,
-						onItemDeselect=this.panelOnItemDeselect
-					),
-					panInventory: ItemPanel(
-						x=0.5, y=2.25+craftingRows*1.125+0.5,
-						cols=10, rows=6,
-						slots=slots,
-						slotHighlightFunc=function[hotbarSize](index)
-						{
-							return index < hotbarSize;	
-						},
-						onItemSelect=this.panelOnItemSelect,
-						onItemDeselect=this.panelOnItemDeselect
-					),
-				}
+				width=width, height=height,
+				controls=controls
 			)
 		{
 			this.entity = entity;
-			this.slots = slots;
-			this.hotbarSize = hotbarSize;
-			this.backpackSize = backpackSize;
-			this.craftingCols = craftingCols; this.craftingRows = craftingRows;
-		}
-		
-		
-		function updateRecipe()
-		{
-			var panCrafting = controls["panCrafting"];
-			var panCrafted  = controls["panCrafted"];
 			
-			currentRecipe = recipes.getRecipe(panCrafting.slots, craftingCols, craftingRows);
-			if currentRecipe == null then
-				panCrafted.slots[0] = null;
-			else
-				panCrafted.slots[0] = currentRecipe.result.copy();
-				
-			panCrafted.markSlotDirty(0);
-			markDirtyCtrl(panCrafted);
+			if panCrafting != null then
+			{
+				this.panCrafting = controls[panCrafting];
+				this.panCrafted = controls[panCrafted];
+			}
 		}
 		
+		
+		# only called, when panCrafting is given
+		function updateRecipe() {}
+		function onCraft(panCtrl, slots, slotIndex, button) {}
 			
 		# Selection of the crafted slot
 		function panelOnItemSelectX(panCtrl, slots, slotIndex, button)
@@ -769,39 +721,14 @@ namespace gui
 				var b = selectedPanel.slots[selectedSlotIndex];
 				#assert(b != null);
 				
-				if selectedPanel == controls["panCrafted"] then
+				if panCrafted != null then
+				if selectedPanel == panCrafted then
 				{
-					# Selected slot is the crafted slot, move contents when possible
-					#assert(currentRecipe != null); # slot should be nonempty only when recipe exists
-					
-					if a != null then if a.item != b.item then return; # different items
-					
-					# consume crafting ingredients
-					var panCrafting = controls["panCrafting"];
-					recipes.consumeRecipe(panCrafting.slots, craftingCols, craftingRows, currentRecipe,
-										  panCrafting.markSlotDirty);
-					markDirtyCtrl(panCrafting);
-					
-					
-					# move contents to new slot
-					if a == null then
-						panCtrl.slots[slotIndex] = b;
-					else
-						a.increase(b.amount);
-					panCtrl.markSlotDirty(slotIndex);
-					markDirtyCtrl(panCtrl);
-					
-					
-					# update recipe
-					updateRecipe();
-					
-					if button != "right" then 
-					{
-						selectedPanel.selectedSlot = null;
-						selectedPanel = null;
-					}
+					# subclass call
+					this.onCraft(panCtrl, slots, slotIndex, button);
+					return;
 				}
-				else
+				
 				{
 					assert(b != null);
 					# Move slot contents to new slot
@@ -850,13 +777,14 @@ namespace gui
 					panCtrl.markSlotDirty(slotIndex);
 					markDirtyCtrl(panCtrl);
 
-					updateRecipe();
+					this.updateRecipe();
 
 					if not keepSelection then selectedPanel = null;
 					return false; #null; # do not select slot
 				}
 			}
 		}
+		
 		function panelOnItemDeselect(panCtrl, button)
 		{
 			selectedPanel = null;
@@ -874,6 +802,110 @@ namespace gui
 				return true;
 			}
 		}
+	}
+	
+	
+	class GuiCraftingInventory : GuiInventory
+	{
+	public:
+		var currentRecipe = null;
+		var craftingCols, craftingRows;
+		
+		
+		#nonsuper slots, hotbarSize, backpackSize, craftingCols, craftingRows
+		constructor(caption, entity, slots, hotbarSize, backpackSize, craftingCols, craftingRows)
+			: super(
+				caption=caption,
+				entity=entity,
+				panCrafting="panCrafting",
+				panCrafted="panCrafted",
+				width=0.5 + 10*1.125 + 0.5, height=2.25+craftingRows*1.125+0.5+6*1.125+0.5,
+				controls={
+					panCrafting: ItemPanel(
+						x=0.5 + 1.125*(10-2-craftingCols)/2, y=2.25,
+						cols=craftingCols, rows=craftingRows,
+						slots=Array(craftingCols*craftingRows),
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panCrafted: ItemPanel(
+						x=0.5 + 1.125*((10-2-craftingCols)/2+craftingCols+1), y=2.25+1.125*(craftingRows-1)/2,
+						cols=1, rows=1,
+						slots=[null],
+						onItemSelect=this.panelOnItemSelectX,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panInventory: ItemPanel(
+						x=0.5, y=2.25+craftingRows*1.125+0.5,
+						cols=10, rows=6,
+						slots=slots,
+						slotHighlightFunc=function[hotbarSize](index)
+						{
+							return index < hotbarSize;	
+						},
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+				}
+			)
+		{
+			this.entity = entity;
+			this.slots = slots;
+			this.craftingCols = craftingCols; this.craftingRows = craftingRows;
+		}
+		
+		
+		function updateRecipe()
+		{
+			if panCrafting == null then return;
+			
+			currentRecipe = recipes.getRecipe(panCrafting.slots, craftingCols, craftingRows);
+			if currentRecipe == null then
+				panCrafted.slots[0] = null;
+			else
+				panCrafted.slots[0] = currentRecipe.result.copy();
+				
+			panCrafted.markSlotDirty(0);
+			markDirtyCtrl(panCrafted);
+		}
+		
+		
+		function onCraft(panCtrl, slots, slotIndex, button)
+		{
+			var a = panCtrl.slots[slotIndex];
+			var b = selectedPanel.slots[selectedSlotIndex];
+				
+			# Selected slot is the crafted slot, move contents when possible
+			#assert(currentRecipe != null); # slot should be nonempty only when recipe exists
+
+			if a != null then if a.item != b.item then return; # different items
+
+			# consume crafting ingredients
+			#var panCrafting = controls["panCrafting"];
+			recipes.consumeRecipe(panCrafting.slots, craftingCols, craftingRows, currentRecipe,
+								  panCrafting.markSlotDirty);
+			markDirtyCtrl(panCrafting);
+
+
+			# move contents to new slot
+			if a == null then
+				panCtrl.slots[slotIndex] = b;
+			else
+				a.increase(b.amount);
+			panCtrl.markSlotDirty(slotIndex);
+			markDirtyCtrl(panCtrl);
+
+
+			# update recipe
+			this.updateRecipe();
+
+			if button != "right" then 
+			{
+				selectedPanel.selectedSlot = null;
+				selectedPanel = null;
+			}
+		}
+		
 		
 		function onClose()
 		{
@@ -887,16 +919,18 @@ namespace gui
 			}
 		}
 		
+		
 		function render(parentDirty)
 		{
 			super.render(parentDirty);
 			
 			if parentDirty then
 			{
+				# Draw Arrow
 				doCanvasShift();
 				var gs = guiScale*1.125;
 				var xx = (0.5  + 1.125*((10-2-craftingCols)/2 + craftingCols))*guiScale;
-				var yy = (2.25 + 1.125*(craftingCols-1)/2)*guiScale;
+				var yy = (2.25 + 1.125*(craftingRows-1)/2)*guiScale;
 				canvas.shift(xx, yy);
 				canvas.setFillColor(1, 1, 1);
 				canvas.fillArea([[0.3*gs, 0.3*gs], [0.3*gs, 0.7*gs], [0.7*gs, 0.5*gs]]);
@@ -906,6 +940,44 @@ namespace gui
 		}
 	}
 	
+	class GuiContainerInventory : GuiInventory
+	{
+	public:
+	
+		#nonsuper slots, hotbarSize, backpackSize, craftingCols, craftingRows
+		constructor(caption, entity, slots, hotbarSize, backpackSize, containerSlots, containerCols, containerRows)
+			: super(
+				caption=caption,
+				entity=entity,
+				panCrafting=null,
+				panCrafted=null,
+				width=0.5 + 10*1.125 + 0.5, height=2.25+containerRows*1.125+0.5+6*1.125+0.5,
+				controls={
+					panContainer: ItemPanel(
+						x=0.5 + 1.125*(10-containerCols)/2, y=2.25,
+						cols=containerCols, rows=containerRows,
+						slots=containerSlots,
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+					panInventory: ItemPanel(
+						x=0.5, y=2.25+containerRows*1.125+0.5,
+						cols=10, rows=6,
+						slots=slots,
+						slotHighlightFunc=function[hotbarSize](index)
+						{
+							return index < hotbarSize;	
+						},
+						onItemSelect=this.panelOnItemSelect,
+						onItemDeselect=this.panelOnItemDeselect
+					),
+				}
+			)
+		{
+			this.entity = entity;
+			this.slots = slots;
+		}
+	}
 }
 # namespace gui
 
