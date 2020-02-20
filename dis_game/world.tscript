@@ -35,6 +35,7 @@ namespace world
 			shift(-x0, -y1);
 		}
 		
+		
 		function hasChanged(world, x, y, chunk)
 		{
 			# more like a hack, regenerate chunk and check if different
@@ -306,9 +307,9 @@ namespace world
 		}
 		function updateNeighbors(x, y)
 		{
-							update(x, y-1);
+			#*           *# update(x, y-1);
 			update(x-1, y);	update(x, y+0); update(x+1, y);
-							update(x, y+1);	
+			#*           *# update(x, y+1);	
 		}
 		
 		function setBlockUpdate(x, y, block)
@@ -520,6 +521,7 @@ namespace dispWorld
 		}
 	}
 	
+	
 	function renderWorld()
 	{
 		canvas.reset();
@@ -602,6 +604,10 @@ namespace dispWorld
 				{
 					if cx == ex then rrx = chunkRW;
 
+					# It seems that the inlined version, renderChunk, is slower than
+					# the generalized version
+#  					renderChunk(dispChunks[i], llx, lly, rrx, rry, cxx, cyy);
+					
 					world.chunkUtil.forEachBlock(
 						dispChunks[i], llx, lly, rrx, rry, cxx, cyy,
 						blockFunc,
@@ -625,7 +631,7 @@ namespace dispWorld
 
 			allDirty = false;
 			
-			#print("Rendering screen took " + (time()-t) + " ms");
+			print("Rendering screen took " + (time()-t) + " ms");
 		}
 		
 		resetRender();

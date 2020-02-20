@@ -38,7 +38,7 @@ function initScale()
 		if forceSettings.dispScale != null then
 			dispScale = forceSettings.dispScale;
 		else
-			dispScale = math.max(canvas.height()//hh, 16);
+			dispScale = math.max(canvas.height()//(2*hh)*2, 16);
 	}
 	dispRows = canvas.height()//dispScale + 1;
 	dispCols = canvas.width()//dispScale + 1;

@@ -356,7 +356,8 @@ namespace texture
 	
 	function furnace(background)
 	{
-		# TODO	
+		# TODO
+		;
 	}
 }
 # namespace texture

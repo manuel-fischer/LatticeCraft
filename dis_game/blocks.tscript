@@ -88,6 +88,7 @@ namespace blocks
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
 		var dryDirtColor = [0.7, 0.5, 0.3];
+		var nrmDirtColor = [0.6, 0.4, 0.25];
 		var wetDirtColor = [0.5, 0.3, 0.2];
 	}
 	use namespace colors;
@@ -95,6 +96,16 @@ namespace blocks
 	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
 	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	
+	class Soil
+	{
+	public:
+		var dirt, grass;
+		constructor(soilColor)
+		{
+			dirt = null; #...
+		}
+	}
 	
 	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
 	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
