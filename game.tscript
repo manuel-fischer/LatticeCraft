@@ -614,7 +614,8 @@ namespace texture
 	
 	function furnace(background)
 	{
-		# TODO	
+		# TODO
+		;
 	}
 }
 # namespace texture
@@ -745,6 +746,7 @@ namespace blocks
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
 		var dryDirtColor = [0.7, 0.5, 0.3];
+		var nrmDirtColor = [0.6, 0.4, 0.25];
 		var wetDirtColor = [0.5, 0.3, 0.2];
 	}
 	use namespace colors;
@@ -752,6 +754,16 @@ namespace blocks
 	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
 	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	
+	class Soil
+	{
+	public:
+		var dirt, grass;
+		constructor(soilColor)
+		{
+			dirt = null; #...
+		}
+	}
 	
 	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
 	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
@@ -855,7 +867,7 @@ namespace world
 {
 	namespace chunkUtil
 	{
-		function forEachBlock(chunk, x0, y0, x1, y1, xOff, yOff, func, shift)
+		function forEachBlock0(chunk, x0, y0, x1, y1, xOff, yOff, func, shift)
 		{
 			shift(x0, y0);
 			var stride = 16 + x0 - x1;
@@ -875,6 +887,331 @@ namespace world
 			}
 			shift(-x0, -y1);
 		}
+		
+		
+		function forEachBlock4(chunk, x0, y0, x1, y1, xOff, yOff, func, shift)
+		{
+			var stride = 16 + x0 - x1;
+			var xback = -16+stride;
+			var i = x0 + 16*y0;
+			var xx0 = x0+xOff, ry = y0+yOff:y1+yOff;
+			var dx = x1-x0;
+			if dx == 0 then return;
+			
+			shift(x0, y0);
+			
+			if dx <= 8 then
+			{
+				if dx <= 4 then
+				{
+					if dx <= 2 then
+					{
+						if dx <= 1 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i], xx0, y); shift( 0, 1);
+								
+								i+=16;
+							}
+						}
+						else # > 1
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift(-1, 1);
+								
+								i+=16;
+							}
+						}
+					}
+					else # > 2
+					{
+						if dx <= 3 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift(-2, 1);
+								
+								i+=16;
+							}
+						}
+						else # > 3
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift(-3, 1);
+								
+								i+=16;
+							}
+						}
+					}
+				}
+				else # > 4
+				{
+					if dx <= 6 then
+					{
+						if dx <= 5 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift(-4, 1);
+								
+								i+=16;
+							}
+						}
+						else # > 5
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift(-5, 1);
+								
+								i+=16;
+							}
+						}
+					}
+					else # > 6
+					{
+						if dx <= 7 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift(-6, 1);
+								
+								i+=16;
+							}
+						}
+						else # > 7
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift(-7, 1);
+								
+								i+=16;
+							}
+						}
+					}
+				}
+			}
+			else # > 8
+			{
+				if dx <= 12 then
+				{
+					if dx <= 10 then
+					{
+						if dx <= 9 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift(-8, 1);
+								
+								i+=16;
+							}
+						}
+						else # > 9
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift(-9, 1);
+								
+								i+=16;
+							}
+						}
+					}
+					else # > 10
+					{
+						if dx <= 11 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift( 1, 0);
+								func(chunk[i+10],xx0+10,y);  shift(-10,1);
+								
+								i+=16;
+							}
+						}
+						else # > 11
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift( 1, 0);
+								func(chunk[i+10],xx0+10,y);  shift( 1, 0);
+								func(chunk[i+11],xx0+11,y);  shift(-11,1);
+								
+								i+=16;
+							}
+						}
+					}
+				}
+				else # > 12
+				{
+					if dx <= 14 then
+					{
+						if dx <= 13 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift( 1, 0);
+								func(chunk[i+10],xx0+10,y);  shift( 1, 0);
+								func(chunk[i+11],xx0+11,y);  shift( 1, 0);
+								func(chunk[i+12],x0+12,y);  shift(-12,1);
+								
+								i+=16;
+							}
+						}
+						else # > 13
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift( 1, 0);
+								func(chunk[i+10],xx0+10,y);  shift( 1, 0);
+								func(chunk[i+11],xx0+11,y);  shift( 1, 0);
+								func(chunk[i+12],xx0+12,y);  shift( 1, 0);
+								func(chunk[i+13],xx0+13,y);  shift(-13,1);
+								
+								i+=16;
+							}
+						}
+					}
+					else # > 14
+					{
+						if dx <= 15 then
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift( 1, 0);
+								func(chunk[i+10],xx0+10,y);  shift( 1, 0);
+								func(chunk[i+11],xx0+11,y);  shift( 1, 0);
+								func(chunk[i+12],xx0+12,y);  shift( 1, 0);
+								func(chunk[i+13],xx0+13,y);  shift( 1, 0);
+								func(chunk[i+14],xx0+14,y);  shift(-14,1);
+								
+								i+=16;
+							}
+						}
+						else # > 15
+						{
+							for var y in ry do
+							{
+								func(chunk[i],   xx0,   y);  shift( 1, 0);
+								func(chunk[i+1], xx0+1, y);  shift( 1, 0);
+								func(chunk[i+2], xx0+2, y);  shift( 1, 0);
+								func(chunk[i+3], xx0+3, y);  shift( 1, 0);
+								func(chunk[i+4], xx0+4, y);  shift( 1, 0);
+								func(chunk[i+5], xx0+5, y);  shift( 1, 0);
+								func(chunk[i+6], xx0+6, y);  shift( 1, 0);
+								func(chunk[i+7], xx0+7, y);  shift( 1, 0);
+								func(chunk[i+8], xx0+8, y);  shift( 1, 0);
+								func(chunk[i+9], xx0+9, y);  shift( 1, 0);
+								func(chunk[i+10],xx0+10,y);  shift( 1, 0);
+								func(chunk[i+11],xx0+11,y);  shift( 1, 0);
+								func(chunk[i+12],xx0+12,y);  shift( 1, 0);
+								func(chunk[i+13],xx0+13,y);  shift( 1, 0);
+								func(chunk[i+14],xx0+14,y);  shift( 1, 0);
+								func(chunk[i+15],xx0+15,y);  shift(-15,1);
+								
+								i+=16;
+							}
+						}
+					}
+				}
+			}
+			shift(-x0, -y1);
+		}
+		
+		
+		var forEachBlock = forEachBlock0;
+		
 		
 		function hasChanged(world, x, y, chunk)
 		{
@@ -1147,9 +1484,9 @@ namespace world
 		}
 		function updateNeighbors(x, y)
 		{
-							update(x, y-1);
+			#*           *# update(x, y-1);
 			update(x-1, y);	update(x, y+0); update(x+1, y);
-							update(x, y+1);	
+			#*           *# update(x, y+1);	
 		}
 		
 		function setBlockUpdate(x, y, block)
@@ -2029,6 +2366,39 @@ namespace dispWorld
 		}
 	}
 	
+	
+	function renderChunk(chunk, x0, y0, x1, y1, xOff, yOff)
+	{
+		#world.chunkUtil.forEachBlock(
+		#	dispChunks[i], llx, lly, rrx, rry, cxx, cyy,
+		#	blockFunc,
+		#	canvas.shift
+		#);	
+		
+		canvas.shift(x0, y0);
+		var stride = 16 + x0 - x1;
+		var xback = -16+stride;
+		var i = x0 + 16*y0;
+		var rx = x0+xOff:x1+xOff, ry = y0+yOff:y1+yOff;
+		var y, x;
+		for var y in ry do
+		{
+			for var x in rx	do
+			{
+				var b = chunk[i];
+				b.render();
+				visBlocks[x+(y)*dispCols] = b;
+				markDirtyGuiCB(x, y);
+				i += 1;
+				canvas.shift(1, 0);
+			}
+			i += stride;
+			canvas.shift(xback, 1);
+		}
+		canvas.shift(-x0, -y1);
+	}
+	
+	
 	function renderWorld()
 	{
 		canvas.reset();
@@ -2111,6 +2481,10 @@ namespace dispWorld
 				{
 					if cx == ex then rrx = chunkRW;
 
+					# It seems that the inlined version, renderChunk, is slower than
+					# the generalized version
+#  					renderChunk(dispChunks[i], llx, lly, rrx, rry, cxx, cyy);
+					
 					world.chunkUtil.forEachBlock(
 						dispChunks[i], llx, lly, rrx, rry, cxx, cyy,
 						blockFunc,
@@ -2134,7 +2508,7 @@ namespace dispWorld
 
 			allDirty = false;
 			
-			#print("Rendering screen took " + (time()-t) + " ms");
+			print("Rendering screen took " + (time()-t) + " ms");
 		}
 		
 		resetRender();
@@ -2417,7 +2791,7 @@ function initScale()
 		if forceSettings.dispScale != null then
 			dispScale = forceSettings.dispScale;
 		else
-			dispScale = math.max(canvas.height()//hh, 16);
+			dispScale = math.max(canvas.height()//(2*hh)*2, 16);
 	}
 	dispRows = canvas.height()//dispScale + 1;
 	dispCols = canvas.width()//dispScale + 1;
@@ -5159,6 +5533,21 @@ namespace eventHandlers
 				gui.setModal(gamemenu.GuiGameMenu());
 			else
 				gui.closeModal();
+		}
+		else if k == "l" then
+		{
+			use namespace world.chunkUtil;
+			if forEachBlock	== forEachBlock0 then
+			{
+				forEachBlock = forEachBlock4;
+				print("Changed to forEachBlock4");
+			}
+			else
+			{
+				forEachBlock = forEachBlock0;
+				print("Changed to forEachBlock0");
+			}
+			
 		}
 	});
 
