@@ -1,6 +1,11 @@
 # LatticeCraft
 A game written in TScript, similar to Minecraft/Terraria.
 
+## Screenshots
+![](screenshots/009.png)
+
+[More here...](screenshots/screenshots.md)
+
 ## Source Code
 [Here](https://raw.githubusercontent.com/manuel-fischer/LatticeCraft/master/game.tscript)
 
