@@ -656,8 +656,7 @@ namespace entityBehavior
 
 
 
-#[file] blocks.tscript#main
-
+#[file] blocks.tscript
 namespace blocks
 {
 	var blockMapping = {};
@@ -741,7 +740,19 @@ namespace blocks
 			this.hasBlockData = hasBlockData;
 		}
 	}
-	
+}
+# namespace blocks
+
+
+
+
+
+
+
+#[file] def_blocks.tscript#definitions
+
+namespace blocks
+{
 	namespace colors
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
@@ -4764,7 +4775,7 @@ namespace gamemenu
 }
 
 
-#[file] blocks.tscript#behavior
+#[file] def_blocks.tscript#behavior
 
 namespace blockBehavior
 {
@@ -4969,13 +4980,6 @@ namespace blockBehavior
 	};
 }
 # namespace blockBehavior
-
-
-
-
-
-
-
 #[file] eventHandlers.tscript
 
 namespace eventHandlers

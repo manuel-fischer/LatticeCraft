@@ -1,0 +1,276 @@
+#[section] definitions
+
+namespace blocks
+{
+	namespace colors
+	{
+		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
+		var dryDirtColor = [0.7, 0.5, 0.3];
+		var nrmDirtColor = [0.6, 0.4, 0.25];
+		var wetDirtColor = [0.5, 0.3, 0.2];
+	}
+	use namespace colors;
+	
+	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
+	
+	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	
+	class Soil
+	{
+	public:
+		var dirt, grass;
+		constructor(soilColor)
+		{
+			dirt = null; #...
+		}
+	}
+	
+	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
+	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
+	
+	var planks      = mapCharToBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
+	var log         = mapCharToBlock("W", Block(texture.log(logColor), solid=false));
+	var sapling     = mapCharToBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], air.texture), solid=false));
+	var leaves      = mapCharToBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], air.texture), sapling, 0.25, solid=false));
+	var leavesOnLog = mapCharToBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], log.texture), log, solid=false));
+	
+	var craftingTable = mapCharToBlock("T", Block(
+		texture=texture.craftingTable([0.8, 0.7, 0.5], air.texture),
+		solid=false
+	));
+	var chest = mapCharToBlock("C", Block(
+		texture=texture.chest([0.8, 0.7, 0.5]),
+		solid=false
+	));
+	
+	
+	var glass = mapCharToBlock("_", Block(texture.glass(air.texture)));
+	
+	var bricks      = mapCharToBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
+	
+	
+	var coalOre = mapCharToBlock("c", Block(texture.ore([0.1, 0.1, 0.1], stone.texture)));
+	
+	var sand = mapCharToBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
+	var water = mapCharToBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
+	
+	
+	function isSoil(b) {
+		return b == dirt or b == grass;
+	}
+}
+# namespace blocks
+
+
+
+
+
+
+
+
+
+#[section] behavior
+
+namespace blockBehavior
+{
+
+	function growTree(x, y)
+	{
+		if theWorld.getBlock(x, y-1) != blocks.air then return;
+		theWorld.setBlock(x, y, blocks.log);
+		
+		
+		var tree = [" ### ",
+					"#####",
+					"##%##",
+					"##%##",
+					" #%# ",
+					"  |  ",
+					"  |  ",
+					"  |  "];
+
+		var mapTree = {"#": blocks.leaves,
+					   "|": blocks.log,
+					   "%": blocks.leavesOnLog};
+
+		var xx, yy;
+
+		yy=y-8;
+		for var r in tree do
+		{
+			xx=x-2;
+			for var b in r.split("") do
+			{
+				if mapTree.has(b) then
+				{
+					
+					var blk = mapTree[b];
+					var wblk = theWorld.getBlock(xx, yy);
+				
+					if wblk == blocks.air then
+						theWorld.setBlock(xx, yy, blk);
+					else if blk == blocks.leaves and wblk == blocks.log then
+						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
+					else if blk == blocks.log and wblk == blocks.leaves then
+						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
+					else if blk == blocks.leavesOnLog and wblk == blocks.log then
+						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
+					else if blk == blocks.leavesOnLog and wblk == blocks.leaves then
+						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
+						
+						
+				}
+				xx+=1;
+			}
+			yy+=1;
+		}	
+	}
+	
+	blocks.sapling.tick = function(x, y)
+	{
+		growTree(x, y);
+	};
+	
+	
+	blocks.dirt.tick = function(x, y)
+	{
+		if not theWorld.getBlock(x, y-1).solid then
+		{
+			for var xx in [x-1, x+1] do
+			for var yy in  y-1: y+2  do
+			{
+				if theWorld.getBlock(xx, yy) == blocks.grass then
+				{
+					theWorld.setBlock(x, y, blocks.grass);
+					return;
+				}
+			}
+		}
+	};
+	
+	blocks.grass.tick = function(x, y)
+	{
+		if theWorld.getBlock(x, y-1).solid then
+			theWorld.setBlock(x, y, blocks.dirt);
+	};
+	
+	
+	blocks.sapling.place = function(x, y)
+	{
+		var placeable = blocks.isSoil(theWorld.getBlock(x, y+1));
+		if placeable then
+			theWorld.setBlockUpdate(x, y, blocks.sapling);
+			
+		return placeable;
+	};
+	
+	blocks.water.update = function(x, y)
+	{
+		if theWorld.getBlock(x, y+1) == blocks.air then
+		{
+			theWorld.setBlock(x, y, blocks.air);
+			theWorld.setBlock(x, y+1, blocks.water);
+			theWorld.updateNeighbors(x, y);
+			#world.updateNeighbors(x, y+1);
+			return;
+		}
+		
+		var pm = 1; if math.random() < 0.5 then pm=-1;
+		for var i in 0:2 do
+		{
+			if theWorld.getBlock(x+pm, y) == blocks.air then
+			{
+				if theWorld.getBlock(x+pm, y+1) == blocks.air then
+				{
+					theWorld.setBlockUpdate(x, y, blocks.air);
+					theWorld.setBlockUpdate(x+pm, y+1, blocks.water);
+					return;
+				}
+				
+				theWorld.setBlock(x, y, blocks.air);
+				theWorld.setBlock(x+pm, y, blocks.water);
+				theWorld.update(x, y-1);
+				theWorld.update(x, y);
+				theWorld.update(x+pm, y);
+				theWorld.update(x-pm, y);
+# 				theWorld.update(x, y-1);
+# 				if math.random() < 0.99 then
+# 				{
+# 					theWorld.updateNeighbors(x, y);
+# 					theWorld.updateNeighbors(x+pm, y);
+# 				}
+				return;
+			}
+			pm = -pm;
+		}
+	};
+	blocks.water.tick=blocks.water.update;
+	
+	
+	blocks.sand.update = function(x, y)
+	{
+		if theWorld.getBlock(x, y+1) == blocks.air then
+		{
+			theWorld.setBlockUpdate(x, y, blocks.air);
+			theWorld.setBlockUpdate(x, y+1, blocks.sand);
+			return;
+		}
+		
+		var pm = 1; if math.random() < 0.5 then pm=-1;
+		for var i in 0:Integer(math.random()*2)+1 do
+		{
+			if theWorld.getBlock(x+pm, y) == blocks.air then
+			{
+				if theWorld.getBlock(x+pm, y+1) == blocks.air then
+				{
+					theWorld.setBlockUpdate(x, y, blocks.air);
+					theWorld.setBlockUpdate(x+pm, y+1, blocks.sand);
+					return;
+				}
+	# 			else
+	# 			{
+	# 				theWorld.setBlock(x, y, blocks.air);
+	# 				theWorld.setBlock(x+pm, y, blocks.sand);
+	# 				theWorld.update(x, y-1);
+	# 				if math.random() < 0.5 then
+	# 				{
+	# 					theWorld.updateNeighbors(x, y);
+	# 					theWorld.updateNeighbors(x+pm, y);
+	# 				}
+	# 			}
+			}
+			pm = -pm;
+		}
+	};
+	blocks.sand.tick = blocks.sand.update;
+	
+	
+	blocks.craftingTable.onClick=function(x, y)
+	{
+		# TODO Open crafting gui here	
+		gui.setModal(gui.GuiCraftingInventory(
+			"Crafting Table",
+			thePlayer,
+			inventory.slots,
+			inventory.hotbarSize, 
+			inventory.backpackSize,
+			3, 3
+		));
+	};
+	
+	
+	blocks.chest.onClick=function(x, y)
+	{
+		# TODO Open crafting gui here	
+		gui.setModal(gui.GuiContainerInventory(
+			"Chest",
+			thePlayer,
+			inventory.slots,
+			inventory.hotbarSize, 
+			inventory.backpackSize,
+			Array(10*3),
+			10, 3
+		));
+	};
+}
+# namespace blockBehavior

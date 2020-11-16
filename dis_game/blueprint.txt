@@ -4,7 +4,8 @@ canvasUtil.tscript
 texture.tscript
 world.tscript#fwd
 entities.tscript#behavior
-blocks.tscript#main
+blocks.tscript
+def_blocks.tscript#definitions
 random.tscript
 control.tscript#fwd
 world.tscript#main
@@ -24,6 +25,6 @@ gui.tscript#GuiSettings
 inventory.tscript#gui.GuiInventory
 world.tscript#serialization
 gamemenu.tscript
-blocks.tscript#behavior
+def_blocks.tscript#behavior
 eventHandlers.tscript
 main.tscript#main
