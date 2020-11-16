@@ -10,7 +10,7 @@ To define a structure, you have to write a function that takes a two parameters,
 This function is called, whenever the structure is placed into the world. It might be called multiple times
 for the same structure, in this case the function should not have side effects other than on `placer` and `random`.
 
-`placer` has a single member function, `setBlock(x, y, block)`.
+`placer` has the member function, `setBlock(x, y, block)`.
 The placer object already offsets the coordinate system, so you only have to consider placing blocks around `(0, 0)`.
 Usually the origin is at the air block directly above the surface for surface structures.
 
@@ -33,3 +33,10 @@ generator.addSurfaceStructure(generateBrickColumn, 1, 3);
 ```
 
 When writing structures you should consider that the ground is not flat, you might add additional dirt and grassblocks around your structure, to give it an additional base.
+
+
+## What is the placer exactly?
+A placer is an object of either the class `ChunkPlacer` or `WorldPlacer`, both behave similarily.
+The `ChunkPlacer` is used during generation.
+The `WorldPlacer` is used in all other cases, whenever something changed in the world.
+Both offset the coordinate system.

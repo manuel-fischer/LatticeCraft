@@ -18,10 +18,7 @@ function drawRedBlock(draw)
 	draw.fillRect(1, 1, 14, 14);
 }
 #[file] mod.tscript#blocks
-var RED_BLOCK = registerNewBlock({
-	"character": "R"
-	"texture": drawRedBlock
-});
+var RED_BLOCK = registerNewBlock("R", Block(drawRedBlock));
 ```
 
 See mod_blocks.md for adding blocks.

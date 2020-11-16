@@ -1,0 +1,18 @@
+#[section] textures
+namespace mod
+{
+	# add your texture functions here
+}
+
+#[section] blocks
+namespace mod
+{
+	# add your block definitions here
+}
+
+
+#[section] blockBehavior
+namespace mod
+{
+	# add block behavior here
+}

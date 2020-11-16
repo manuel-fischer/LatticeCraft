@@ -2,10 +2,12 @@ main.tscript
 util.tscript
 canvasUtil.tscript
 texture.tscript
+mod.tscript#textures
 world.tscript#fwd
 entities.tscript#behavior
 blocks.tscript
-def_blocks.tscript#definitions
+vanilla.tscript#blocks
+mod.tscript#blocks
 random.tscript
 control.tscript#fwd
 world.tscript#main
@@ -25,6 +27,7 @@ gui.tscript#GuiSettings
 inventory.tscript#gui.GuiInventory
 world.tscript#serialization
 gamemenu.tscript
-def_blocks.tscript#behavior
+vanilla.tscript#blockBehavior
+mod.tscript#blockBehavior
 eventHandlers.tscript
 main.tscript#main

@@ -37,14 +37,14 @@ function userAction(x, y)
 				# TODO what happens when the inventory is full
 			}
 		}
-		theWorld.setBlockUpdate(x, y, blocks.air);
+		theWorld.setBlockUpdate(x, y, vanilla.AIR);
 	}
 	else if mouseMode == mouseModes.place then
 	{
 		var selectedSlot = inventory.slots[inventory.hotbarIndex];
 		if selectedSlot != null then
 		{
-			if b == blocks.air then
+			if b == vanilla.AIR then
 			{
 				if selectedSlot.item.place(x, y) then
 					inventory.useCurrent();

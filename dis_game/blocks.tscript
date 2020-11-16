@@ -1,17 +1,19 @@
+
+var registeredBlocks = {};
+function registerBlock(char, block)
+{
+	if registeredBlocks.has(char) then error("Character '" + char + "' already used");
+	if block.char != null then error("Block already mapped to character");
+	if char.size() != 1 then error("Block character should be of size 1");
+	if "0" <= char and char <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
+	
+	block.char = char;
+	registeredBlocks[char] = block;
+	return block;
+}
+
 namespace blocks
 {
-	var blockMapping = {};
-	function mapCharToBlock(char, block)
-	{
-		if blockMapping.has(char) then error("Character '" + char + "' already used");
-		if block.char != null then error("Block already mapped to character");
-		if char.size() != 1 then error("Block character should be of size 1");
-		if "0" <= char and char <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
-		
-		block.char = char;
-		blockMapping[char] = block;
-		return block;
-	}
 
 	class Block
 	{

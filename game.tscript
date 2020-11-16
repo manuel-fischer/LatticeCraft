@@ -621,6 +621,12 @@ namespace texture
 # namespace texture
 
 
+#[file] mod.tscript#textures
+namespace mod
+{
+	# add your texture functions here
+}
+
 #[file] world.tscript#fwd
 
 namespace theWorldCB
@@ -657,20 +663,22 @@ namespace entityBehavior
 
 
 #[file] blocks.tscript
+
+var registeredBlocks = {};
+function registerBlock(char, block)
+{
+	if registeredBlocks.has(char) then error("Character '" + char + "' already used");
+	if block.char != null then error("Block already mapped to character");
+	if char.size() != 1 then error("Block character should be of size 1");
+	if "0" <= char and char <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
+	
+	block.char = char;
+	registeredBlocks[char] = block;
+	return block;
+}
+
 namespace blocks
 {
-	var blockMapping = {};
-	function mapCharToBlock(char, block)
-	{
-		if blockMapping.has(char) then error("Character '" + char + "' already used");
-		if block.char != null then error("Block already mapped to character");
-		if char.size() != 1 then error("Block character should be of size 1");
-		if "0" <= char and char <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
-		
-		block.char = char;
-		blockMapping[char] = block;
-		return block;
-	}
 
 	class Block
 	{
@@ -749,10 +757,12 @@ namespace blocks
 
 
 
-#[file] def_blocks.tscript#definitions
-
-namespace blocks
+#[file] vanilla.tscript#blocks
+# TODO cleanup and move texture section into this file
+namespace vanilla
 {
+	use namespace blocks; # TODO: remove blocks namespace completely
+	
 	namespace colors
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
@@ -762,52 +772,42 @@ namespace blocks
 	}
 	use namespace colors;
 	
-	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
+	var AIR = registerBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
-	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
 	
-	class Soil
-	{
-	public:
-		var dirt, grass;
-		constructor(soilColor)
-		{
-			dirt = null; #...
-		}
-	}
+	var DIRT  = registerBlock("d", Block(texture.dirt(dryDirtColor)));
+	var GRASS = registerBlock("g", Block(texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT));
 	
-	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
-	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
+	var PLANKS     = registerBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
+	var LOG        = registerBlock("W", Block(texture.log(logColor), solid=false));
+	var SAPLING    = registerBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false));
+	var LEAVES     = registerBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false));
+	var LOG_LEAVES = registerBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false));
 	
-	var planks      = mapCharToBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
-	var log         = mapCharToBlock("W", Block(texture.log(logColor), solid=false));
-	var sapling     = mapCharToBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], air.texture), solid=false));
-	var leaves      = mapCharToBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], air.texture), sapling, 0.25, solid=false));
-	var leavesOnLog = mapCharToBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], log.texture), log, solid=false));
-	
-	var craftingTable = mapCharToBlock("T", Block(
-		texture=texture.craftingTable([0.8, 0.7, 0.5], air.texture),
+	var CRAFTING_TABLE = registerBlock("T", Block(
+		texture=texture.craftingTable([0.8, 0.7, 0.5], AIR.texture),
 		solid=false
 	));
-	var chest = mapCharToBlock("C", Block(
+	var CHEST = registerBlock("C", Block(
 		texture=texture.chest([0.8, 0.7, 0.5]),
 		solid=false
 	));
 	
 	
-	var glass = mapCharToBlock("_", Block(texture.glass(air.texture)));
+	var GLASS = registerBlock("_", Block(texture.glass(AIR.texture)));
 	
-	var bricks      = mapCharToBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
+	var BRICKS = registerBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
 	
 	
-	var coalOre = mapCharToBlock("c", Block(texture.ore([0.1, 0.1, 0.1], stone.texture)));
+	var COAL_ORE = registerBlock("c", Block(texture.ore([0.1, 0.1, 0.1], STONE.texture)));
 	
-	var sand = mapCharToBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
-	var water = mapCharToBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
+	var SAND = registerBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
+	var WATER = registerBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
 	
 	
 	function isSoil(b) {
-		return b == dirt or b == grass;
+		return b == DIRT or b == GRASS;
 	}
 }
 # namespace blocks
@@ -818,6 +818,13 @@ namespace blocks
 
 
 
+
+
+#[file] mod.tscript#blocks
+namespace mod
+{
+	# add your block definitions here
+}
 
 
 #[file] random.tscript
@@ -967,8 +974,8 @@ namespace world
 			}
 
 			function generateChunk(x, y) {					
-				var block = blocks.air;
-				if y >= 0 then block = blocks.stone;
+				var block = vanilla.AIR;
+				if y >= 0 then block = vanilla.STONE;
 				return Chunk(block);
 			}
 		}
@@ -1021,13 +1028,13 @@ namespace world
 					for x in 0:16 do
 					{
 						var yy = Integer(rr[x]*15);
-						var b = blocks.grass;
+						var b = vanilla.GRASS;
 						for y in yy:16 do
 						{
 							chunkData[x + y*16] = b;
-							b = blocks.dirt;
+							b = vanilla.DIRT;
 							if rng.random() < (2*y-yy)/(16+8) then
-								b = blocks.stone;
+								b = vanilla.STONE;
 						}
 					}
 				}
@@ -1053,14 +1060,14 @@ namespace world
 					if y % 5 == 1 then
 						for y in  1: 3 do
 						for x in  0:16 do
-							chunkData[x + y*16] = blocks.coalOre;
+							chunkData[x + y*16] = vanilla.COAL_ORE;
 
 					var yy = y % 3 + 3;
 					for y in  0:16 do
 					for x in  0:16 do
 					{
 						var chance = (y % yy) * (0.7/4) + 0.01;
-						if rng.random() < chance then chunkData[x + y*16] = blocks.coalOre;
+						if rng.random() < chance then chunkData[x + y*16] = vanilla.COAL_ORE;
 					}
 				}
 				else if y == -1 then
@@ -1071,22 +1078,22 @@ namespace world
 						for var y in 0:15 do
 						{
 							var curblock = chunkData[x + y*16];
-							if curblock == blocks.grass then if y >= 1 then
+							if curblock == vanilla.GRASS then if y >= 1 then
 							{
 								var yi = y-1;
 								
-								chunkData[x + yi*16] = blocks.sapling;
+								chunkData[x + yi*16] = vanilla.SAPLING;
 
 								if rng.random() < 0.9 then do
 								{
 									yi -= 1; if yi < 0 then break;
-									chunkData[x + yi*16] = blocks.leaves;
+									chunkData[x + yi*16] = vanilla.LEAVES;
 								}
 								while rng.random() < 0.3;
 								break;
 							}
 							
-							if curblock != blocks.air then break;
+							if curblock != vanilla.AIR then break;
 						}
 					}
 				}
@@ -1537,22 +1544,22 @@ namespace recipes
 		recipe.consumeAt(slots, xd, yd, o[0], o[1], o[2], o[3], onConsume);
 	}
 	
-	registerRecipe(4, blocks.planks,
+	registerRecipe(4, vanilla.PLANKS,
 		["X"],
-		{X: blocks.log}
+		{X: vanilla.LOG}
 	);
 	
-	registerRecipe(1, blocks.craftingTable,
+	registerRecipe(1, vanilla.CRAFTING_TABLE,
 		["XX",
 		 "XX"],
-		{X: blocks.planks}
+		{X: vanilla.PLANKS}
 	);
 	
-	registerRecipe(1, blocks.chest,
+	registerRecipe(1, vanilla.CHEST,
 		["XXX",
 		 "X X",
 		 "XXX"],
-		{X: blocks.planks}
+		{X: vanilla.PLANKS}
 	);
 }
 
@@ -2609,14 +2616,14 @@ function userAction(x, y)
 				# TODO what happens when the inventory is full
 			}
 		}
-		theWorld.setBlockUpdate(x, y, blocks.air);
+		theWorld.setBlockUpdate(x, y, vanilla.AIR);
 	}
 	else if mouseMode == mouseModes.place then
 	{
 		var selectedSlot = inventory.slots[inventory.hotbarIndex];
 		if selectedSlot != null then
 		{
-			if b == blocks.air then
+			if b == vanilla.AIR then
 			{
 				if selectedSlot.item.place(x, y) then
 					inventory.useCurrent();
@@ -4426,10 +4433,10 @@ namespace world
 			else
 			{
 				count = math.max(1, count);
-				if not blocks.blockMapping.has(c) then
+				if not registeredBlocks.has(c) then
 					error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-				var block = blocks.blockMapping[c];
+				var block = registeredBlocks[c];
 				data = Array.concat(data, Array(count, block));
 				count = 0;
 			}
@@ -4488,10 +4495,10 @@ namespace world
 				}
 				else
 				{
-					if not blocks.blockMapping.has(c) then
+					if not registeredBlocks.has(c) then
 						error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-					var stack = inventory.ItemStack(count, blocks.blockMapping[c]);
+					var stack = inventory.ItemStack(count, registeredBlocks[c]);
 					slots.push(stack);
 				}
 				count = 0;	
@@ -4604,13 +4611,7 @@ namespace world
 	{
 		var p = entities.EntityPlayer(0, -16);
 		{
-			#p.collectItem(blocks.sapling);
-			#p.collectItem(blocks.planks, 999);
-			p.collectItem(blocks.bricks, 999);
-
-			#p.collectItem(blocks.water, 69);
-
-			#p.collectItem(blocks.sand, 420);
+			p.collectItem(vanilla.BRICKS, 999);
 		}
 
 		theWorld = world.randomWorld();
@@ -4775,15 +4776,14 @@ namespace gamemenu
 }
 
 
-#[file] def_blocks.tscript#behavior
-
-namespace blockBehavior
+#[file] vanilla.tscript#blockBehavior
+namespace vanilla
 {
 
 	function growTree(x, y)
 	{
-		if theWorld.getBlock(x, y-1) != blocks.air then return;
-		theWorld.setBlock(x, y, blocks.log);
+		if theWorld.getBlock(x, y-1) != vanilla.AIR then return;
+		theWorld.setBlock(x, y, vanilla.LOG);
 		
 		
 		var tree = [" ### ",
@@ -4795,9 +4795,9 @@ namespace blockBehavior
 					"  |  ",
 					"  |  "];
 
-		var mapTree = {"#": blocks.leaves,
-					   "|": blocks.log,
-					   "%": blocks.leavesOnLog};
+		var mapTree = {"#": vanilla.LEAVES,
+					   "|": vanilla.LOG,
+					   "%": vanilla.LOG_LEAVES};
 
 		var xx, yy;
 
@@ -4813,16 +4813,16 @@ namespace blockBehavior
 					var blk = mapTree[b];
 					var wblk = theWorld.getBlock(xx, yy);
 				
-					if wblk == blocks.air then
+					if wblk == vanilla.AIR then
 						theWorld.setBlock(xx, yy, blk);
-					else if blk == blocks.leaves and wblk == blocks.log then
-						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
-					else if blk == blocks.log and wblk == blocks.leaves then
-						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
-					else if blk == blocks.leavesOnLog and wblk == blocks.log then
-						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
-					else if blk == blocks.leavesOnLog and wblk == blocks.leaves then
-						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
+					else if blk == vanilla.LEAVES and wblk == vanilla.LOG then
+						theWorld.setBlock(xx, yy, vanilla.LOG_LEAVES);
+					else if blk == vanilla.LOG and wblk == vanilla.LEAVES then
+						theWorld.setBlock(xx, yy, vanilla.LOG_LEAVES);
+					else if blk == vanilla.LOG_LEAVES and wblk == vanilla.LOG then
+						theWorld.setBlock(xx, yy, vanilla.LOG_LEAVES);
+					else if blk == vanilla.LOG_LEAVES and wblk == vanilla.LEAVES then
+						theWorld.setBlock(xx, yy, vanilla.LOG_LEAVES);
 						
 						
 				}
@@ -4832,50 +4832,50 @@ namespace blockBehavior
 		}	
 	}
 	
-	blocks.sapling.tick = function(x, y)
+	vanilla.SAPLING.tick = function(x, y)
 	{
 		growTree(x, y);
 	};
 	
 	
-	blocks.dirt.tick = function(x, y)
+	vanilla.DIRT.tick = function(x, y)
 	{
 		if not theWorld.getBlock(x, y-1).solid then
 		{
 			for var xx in [x-1, x+1] do
 			for var yy in  y-1: y+2  do
 			{
-				if theWorld.getBlock(xx, yy) == blocks.grass then
+				if theWorld.getBlock(xx, yy) == vanilla.GRASS then
 				{
-					theWorld.setBlock(x, y, blocks.grass);
+					theWorld.setBlock(x, y, vanilla.GRASS);
 					return;
 				}
 			}
 		}
 	};
 	
-	blocks.grass.tick = function(x, y)
+	vanilla.GRASS.tick = function(x, y)
 	{
 		if theWorld.getBlock(x, y-1).solid then
-			theWorld.setBlock(x, y, blocks.dirt);
+			theWorld.setBlock(x, y, vanilla.DIRT);
 	};
 	
 	
-	blocks.sapling.place = function(x, y)
+	vanilla.SAPLING.place = function(x, y)
 	{
-		var placeable = blocks.isSoil(theWorld.getBlock(x, y+1));
+		var placeable = vanilla.isSoil(theWorld.getBlock(x, y+1));
 		if placeable then
-			theWorld.setBlockUpdate(x, y, blocks.sapling);
+			theWorld.setBlockUpdate(x, y, vanilla.SAPLING);
 			
 		return placeable;
 	};
 	
-	blocks.water.update = function(x, y)
+	vanilla.WATER.update = function(x, y)
 	{
-		if theWorld.getBlock(x, y+1) == blocks.air then
+		if theWorld.getBlock(x, y+1) == vanilla.AIR then
 		{
-			theWorld.setBlock(x, y, blocks.air);
-			theWorld.setBlock(x, y+1, blocks.water);
+			theWorld.setBlock(x, y, vanilla.AIR);
+			theWorld.setBlock(x, y+1, vanilla.WATER);
 			theWorld.updateNeighbors(x, y);
 			#world.updateNeighbors(x, y+1);
 			return;
@@ -4884,17 +4884,17 @@ namespace blockBehavior
 		var pm = 1; if math.random() < 0.5 then pm=-1;
 		for var i in 0:2 do
 		{
-			if theWorld.getBlock(x+pm, y) == blocks.air then
+			if theWorld.getBlock(x+pm, y) == vanilla.AIR then
 			{
-				if theWorld.getBlock(x+pm, y+1) == blocks.air then
+				if theWorld.getBlock(x+pm, y+1) == vanilla.AIR then
 				{
-					theWorld.setBlockUpdate(x, y, blocks.air);
-					theWorld.setBlockUpdate(x+pm, y+1, blocks.water);
+					theWorld.setBlockUpdate(x, y, vanilla.AIR);
+					theWorld.setBlockUpdate(x+pm, y+1, vanilla.WATER);
 					return;
 				}
 				
-				theWorld.setBlock(x, y, blocks.air);
-				theWorld.setBlock(x+pm, y, blocks.water);
+				theWorld.setBlock(x, y, vanilla.AIR);
+				theWorld.setBlock(x+pm, y, vanilla.WATER);
 				theWorld.update(x, y-1);
 				theWorld.update(x, y);
 				theWorld.update(x+pm, y);
@@ -4910,33 +4910,33 @@ namespace blockBehavior
 			pm = -pm;
 		}
 	};
-	blocks.water.tick=blocks.water.update;
+	vanilla.WATER.tick=vanilla.WATER.update;
 	
 	
-	blocks.sand.update = function(x, y)
+	vanilla.SAND.update = function(x, y)
 	{
-		if theWorld.getBlock(x, y+1) == blocks.air then
+		if theWorld.getBlock(x, y+1) == vanilla.AIR then
 		{
-			theWorld.setBlockUpdate(x, y, blocks.air);
-			theWorld.setBlockUpdate(x, y+1, blocks.sand);
+			theWorld.setBlockUpdate(x, y, vanilla.AIR);
+			theWorld.setBlockUpdate(x, y+1, vanilla.SAND);
 			return;
 		}
 		
 		var pm = 1; if math.random() < 0.5 then pm=-1;
 		for var i in 0:Integer(math.random()*2)+1 do
 		{
-			if theWorld.getBlock(x+pm, y) == blocks.air then
+			if theWorld.getBlock(x+pm, y) == vanilla.AIR then
 			{
-				if theWorld.getBlock(x+pm, y+1) == blocks.air then
+				if theWorld.getBlock(x+pm, y+1) == vanilla.AIR then
 				{
-					theWorld.setBlockUpdate(x, y, blocks.air);
-					theWorld.setBlockUpdate(x+pm, y+1, blocks.sand);
+					theWorld.setBlockUpdate(x, y, vanilla.AIR);
+					theWorld.setBlockUpdate(x+pm, y+1, vanilla.SAND);
 					return;
 				}
 	# 			else
 	# 			{
-	# 				theWorld.setBlock(x, y, blocks.air);
-	# 				theWorld.setBlock(x+pm, y, blocks.sand);
+	# 				theWorld.setBlock(x, y, vanilla.AIR);
+	# 				theWorld.setBlock(x+pm, y, vanilla.SAND);
 	# 				theWorld.update(x, y-1);
 	# 				if math.random() < 0.5 then
 	# 				{
@@ -4948,10 +4948,10 @@ namespace blockBehavior
 			pm = -pm;
 		}
 	};
-	blocks.sand.tick = blocks.sand.update;
+	vanilla.SAND.tick = vanilla.SAND.update;
 	
 	
-	blocks.craftingTable.onClick=function(x, y)
+	vanilla.CRAFTING_TABLE.onClick=function(x, y)
 	{
 		# TODO Open crafting gui here	
 		gui.setModal(gui.GuiCraftingInventory(
@@ -4965,7 +4965,7 @@ namespace blockBehavior
 	};
 	
 	
-	blocks.chest.onClick=function(x, y)
+	vanilla.CHEST.onClick=function(x, y)
 	{
 		# TODO Open crafting gui here	
 		gui.setModal(gui.GuiContainerInventory(
@@ -4979,7 +4979,11 @@ namespace blockBehavior
 		));
 	};
 }
-# namespace blockBehavior
+#[file] mod.tscript#blockBehavior
+namespace mod
+{
+	# add block behavior here
+}
 #[file] eventHandlers.tscript
 
 namespace eventHandlers

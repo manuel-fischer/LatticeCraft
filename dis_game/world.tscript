@@ -103,7 +103,7 @@ namespace world
 			}
 
 			function generateChunk(x, y) {					
-				var block = blocks.air;
+				var block = vanilla.AIR;
 				if y >= 0 then block = blocks.stone;
 				return Chunk(block);
 			}
@@ -222,7 +222,7 @@ namespace world
 								break;
 							}
 							
-							if curblock != blocks.air then break;
+							if curblock != vanilla.AIR then break;
 						}
 					}
 				}
@@ -729,10 +729,10 @@ namespace world
 			else
 			{
 				count = math.max(1, count);
-				if not blocks.blockMapping.has(c) then
+				if not registeredBlocks.has(c) then
 					error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-				var block = blocks.blockMapping[c];
+				var block = registeredBlocks[c];
 				data = Array.concat(data, Array(count, block));
 				count = 0;
 			}
@@ -791,10 +791,10 @@ namespace world
 				}
 				else
 				{
-					if not blocks.blockMapping.has(c) then
+					if not registeredBlocks.has(c) then
 						error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-					var stack = inventory.ItemStack(count, blocks.blockMapping[c]);
+					var stack = inventory.ItemStack(count, registeredBlocks[c]);
 					slots.push(stack);
 				}
 				count = 0;	

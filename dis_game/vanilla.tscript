@@ -1,7 +1,9 @@
-#[section] definitions
-
-namespace blocks
+#[section] blocks
+# TODO cleanup and move texture section into this file
+namespace vanilla
 {
+	use namespace blocks; # TODO: remove blocks namespace completely
+	
 	namespace colors
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
@@ -11,52 +13,42 @@ namespace blocks
 	}
 	use namespace colors;
 	
-	var air = mapCharToBlock(" ", Block(texture.sky, drop=false, solid=false));
+	var AIR = registerBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
-	var stone = mapCharToBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
 	
-	class Soil
-	{
-	public:
-		var dirt, grass;
-		constructor(soilColor)
-		{
-			dirt = null; #...
-		}
-	}
+	var DIRT  = registerBlock("d", Block(texture.dirt(dryDirtColor)));
+	var GRASS = registerBlock("g", Block(texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT));
 	
-	var dirt  = mapCharToBlock("d", Block(texture.dirt(dryDirtColor)));
-	var grass = mapCharToBlock("g", Block(texture.grown([0.2, 0.7, 0.3], dirt.texture), drop=dirt));
+	var PLANKS     = registerBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
+	var LOG        = registerBlock("W", Block(texture.log(logColor), solid=false));
+	var SAPLING    = registerBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false));
+	var LEAVES     = registerBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false));
+	var LOG_LEAVES = registerBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false));
 	
-	var planks      = mapCharToBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
-	var log         = mapCharToBlock("W", Block(texture.log(logColor), solid=false));
-	var sapling     = mapCharToBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], air.texture), solid=false));
-	var leaves      = mapCharToBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], air.texture), sapling, 0.25, solid=false));
-	var leavesOnLog = mapCharToBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], log.texture), log, solid=false));
-	
-	var craftingTable = mapCharToBlock("T", Block(
-		texture=texture.craftingTable([0.8, 0.7, 0.5], air.texture),
+	var CRAFTING_TABLE = registerBlock("T", Block(
+		texture=texture.craftingTable([0.8, 0.7, 0.5], AIR.texture),
 		solid=false
 	));
-	var chest = mapCharToBlock("C", Block(
+	var CHEST = registerBlock("C", Block(
 		texture=texture.chest([0.8, 0.7, 0.5]),
 		solid=false
 	));
 	
 	
-	var glass = mapCharToBlock("_", Block(texture.glass(air.texture)));
+	var GLASS = registerBlock("_", Block(texture.glass(AIR.texture)));
 	
-	var bricks      = mapCharToBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
+	var BRICKS = registerBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
 	
 	
-	var coalOre = mapCharToBlock("c", Block(texture.ore([0.1, 0.1, 0.1], stone.texture)));
+	var COAL_ORE = registerBlock("c", Block(texture.ore([0.1, 0.1, 0.1], STONE.texture)));
 	
-	var sand = mapCharToBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
-	var water = mapCharToBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
+	var SAND = registerBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
+	var WATER = registerBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
 	
 	
 	function isSoil(b) {
-		return b == dirt or b == grass;
+		return b == DIRT or b == GRASS;
 	}
 }
 # namespace blocks
@@ -69,14 +61,13 @@ namespace blocks
 
 
 
-#[section] behavior
-
-namespace blockBehavior
+#[section] blockBehavior
+namespace vanilla
 {
 
 	function growTree(x, y)
 	{
-		if theWorld.getBlock(x, y-1) != blocks.air then return;
+		if theWorld.getBlock(x, y-1) != vanilla.AIR then return;
 		theWorld.setBlock(x, y, blocks.log);
 		
 		
@@ -107,7 +98,7 @@ namespace blockBehavior
 					var blk = mapTree[b];
 					var wblk = theWorld.getBlock(xx, yy);
 				
-					if wblk == blocks.air then
+					if wblk == vanilla.AIR then
 						theWorld.setBlock(xx, yy, blk);
 					else if blk == blocks.leaves and wblk == blocks.log then
 						theWorld.setBlock(xx, yy, blocks.leavesOnLog);
@@ -166,9 +157,9 @@ namespace blockBehavior
 	
 	blocks.water.update = function(x, y)
 	{
-		if theWorld.getBlock(x, y+1) == blocks.air then
+		if theWorld.getBlock(x, y+1) == vanilla.AIR then
 		{
-			theWorld.setBlock(x, y, blocks.air);
+			theWorld.setBlock(x, y, vanilla.AIR);
 			theWorld.setBlock(x, y+1, blocks.water);
 			theWorld.updateNeighbors(x, y);
 			#world.updateNeighbors(x, y+1);
@@ -178,16 +169,16 @@ namespace blockBehavior
 		var pm = 1; if math.random() < 0.5 then pm=-1;
 		for var i in 0:2 do
 		{
-			if theWorld.getBlock(x+pm, y) == blocks.air then
+			if theWorld.getBlock(x+pm, y) == vanilla.AIR then
 			{
-				if theWorld.getBlock(x+pm, y+1) == blocks.air then
+				if theWorld.getBlock(x+pm, y+1) == vanilla.AIR then
 				{
-					theWorld.setBlockUpdate(x, y, blocks.air);
+					theWorld.setBlockUpdate(x, y, vanilla.AIR);
 					theWorld.setBlockUpdate(x+pm, y+1, blocks.water);
 					return;
 				}
 				
-				theWorld.setBlock(x, y, blocks.air);
+				theWorld.setBlock(x, y, vanilla.AIR);
 				theWorld.setBlock(x+pm, y, blocks.water);
 				theWorld.update(x, y-1);
 				theWorld.update(x, y);
@@ -209,9 +200,9 @@ namespace blockBehavior
 	
 	blocks.sand.update = function(x, y)
 	{
-		if theWorld.getBlock(x, y+1) == blocks.air then
+		if theWorld.getBlock(x, y+1) == vanilla.AIR then
 		{
-			theWorld.setBlockUpdate(x, y, blocks.air);
+			theWorld.setBlockUpdate(x, y, vanilla.AIR);
 			theWorld.setBlockUpdate(x, y+1, blocks.sand);
 			return;
 		}
@@ -219,17 +210,17 @@ namespace blockBehavior
 		var pm = 1; if math.random() < 0.5 then pm=-1;
 		for var i in 0:Integer(math.random()*2)+1 do
 		{
-			if theWorld.getBlock(x+pm, y) == blocks.air then
+			if theWorld.getBlock(x+pm, y) == vanilla.AIR then
 			{
-				if theWorld.getBlock(x+pm, y+1) == blocks.air then
+				if theWorld.getBlock(x+pm, y+1) == vanilla.AIR then
 				{
-					theWorld.setBlockUpdate(x, y, blocks.air);
+					theWorld.setBlockUpdate(x, y, vanilla.AIR);
 					theWorld.setBlockUpdate(x+pm, y+1, blocks.sand);
 					return;
 				}
 	# 			else
 	# 			{
-	# 				theWorld.setBlock(x, y, blocks.air);
+	# 				theWorld.setBlock(x, y, vanilla.AIR);
 	# 				theWorld.setBlock(x+pm, y, blocks.sand);
 	# 				theWorld.update(x, y-1);
 	# 				if math.random() < 0.5 then
@@ -273,4 +264,3 @@ namespace blockBehavior
 		));
 	};
 }
-# namespace blockBehavior
