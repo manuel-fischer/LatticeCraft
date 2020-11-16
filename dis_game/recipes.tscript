@@ -144,22 +144,22 @@ namespace recipes
 		recipe.consumeAt(slots, xd, yd, o[0], o[1], o[2], o[3], onConsume);
 	}
 	
-	registerRecipe(4, blocks.planks,
+	registerRecipe(4, vanilla.PLANKS,
 		["X"],
-		{X: blocks.log}
+		{X: vanilla.LOG}
 	);
 	
-	registerRecipe(1, blocks.craftingTable,
+	registerRecipe(1, vanilla.CRAFTING_TABLE,
 		["XX",
 		 "XX"],
-		{X: blocks.planks}
+		{X: vanilla.PLANKS}
 	);
 	
-	registerRecipe(1, blocks.chest,
+	registerRecipe(1, vanilla.CHEST,
 		["XXX",
 		 "X X",
 		 "XXX"],
-		{X: blocks.planks}
+		{X: vanilla.PLANKS}
 	);
 }
 
