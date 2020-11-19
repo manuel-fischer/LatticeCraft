@@ -15,7 +15,8 @@ namespace vanilla
 	
 	var AIR = registerBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
-	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	var COBBLE_STONE = registerBlock("p", Block(texture.cobblestone([0.6, 0.6, 0.6])));
+	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE));
 	
 	var DIRT  = registerBlock("d", Block(texture.dirt(dryDirtColor)));
 	var GRASS = registerBlock("g", Block(texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT));

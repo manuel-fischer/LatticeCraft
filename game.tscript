@@ -329,7 +329,7 @@ namespace texture
 		};
 	}*#
 	
-	function bevelBlocks(blocks, background)
+	function bevelBlocks(blocks, background, lighten=0.40, darken=0.15)
 	{		
 		var bevelLightComp = [];
 		var bevelDarkComp = [];
@@ -340,9 +340,9 @@ namespace texture
 		}
 		var comp = util.arrayConcat([
 			[background],
-			[function() { canvas.setFillColor(1, 1, 1, 0.40); }],
+			[function[lighten]() { canvas.setFillColor(1, 1, 1, lighten); }],
 			bevelLightComp,
-			[function() { canvas.setFillColor(0, 0, 0, 0.15); }],
+			[function[darken]() { canvas.setFillColor(0, 0, 0, darken); }],
 			bevelDarkComp,
 		]);
 		
@@ -537,9 +537,117 @@ namespace texture
 		return blocks([0.3, 0.3, 0.3], knob, wooden);
 	}
 	
+	function cobblestone(color)
+	{
+		var blocks = [
+			[1, 1, 5, 4],
+			
+			[7, 2, 5, 5],
+			
+			[12, 0, 4, 5],
+			
+			
+			[2, 6, 5, 4],
+			
+			#[7, 8, 3, 3],
+			
+			[7, 8, 4, 4],
+			
+			
+			[11, 8, 5, 4],
+			
+			
+			[3, 11, 5, 4],
+			
+			[9, 13, 5, 3],
+			
+			
+			
+			[0, 10, 3, 5]
+		];
+		
+		var d = [
+			[3, 15, 5, 1],
+			
+			[1, 5, 5, 1],
+			
+			[12, 5, 4, 1],
+			
+			[2, 10, 5, 1],
+			
+			[11, 12, 5, 1],
+			
+			[7, 7, 5, 1],
+			
+			
+			
+			#[7, 1, 3, 1],
+			
+			
+			#[1, 8, 4, 6],
+			#[7, 7, 2, 7],
+			#[11, 10, 2, 4],
+		];
+		var col = [0, 0, 0, 0.2];
+		return fillBlocks(col, d, bevelBlocks(blocks, solid(color), darken = 0.1));
+		
+		#*
+		# light blocks
+		var l = [
+			[1, 1, 4, 1],
+			[1, 1, 1, 3],
+			
+			[7, 2, 5, 1],
+			[7, 2, 1, 5],
+			
+			[13, 0, 3, 1],
+			[13, 0, 1, 5],
+			
+			
+			[2, 6, 3, 1],
+			[2, 6, 1, 5],
+			
+			[11, 8, 5, 1],
+			[11, 8, 1, 4],
+			
+			
+			[3, 12, 5, 1],
+			[3, 12, 1, 4],
+			
+			[9, 13, 5, 1],
+			[9, 13, 1, 3],
+		];
+		
+		# dark blocks
+		var d = [
+			[3, 3, 2, 1],
+			
+			[7, 2, 5, 1],
+			[7, 2, 1, 5],
+			
+			[13, 0, 3, 1],
+			[13, 0, 1, 5],
+			
+			
+			[2, 6, 3, 1],
+			[2, 6, 1, 5],
+			
+			[11, 8, 5, 1],
+			[11, 8, 1, 4],
+			
+			
+			[3, 12, 5, 1],
+			[3, 12, 1, 4],
+			
+			[9, 13, 5, 1],
+			[9, 13, 1, 3],
+		];
+		return fillBlocks([0, 0, 0, 0.1], d, fillBlocks([1, 1, 1, 0.2], l, solid(color)));*#
+	}
 	
 	function stone(color)
 	{
+		#return cobblestone(color);
 		# light blocks
 		var l = [
 			[2, 1, 9, 1],
@@ -774,7 +882,8 @@ namespace vanilla
 	
 	var AIR = registerBlock(" ", Block(texture.sky, drop=false, solid=false));
 	
-	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6])));
+	var COBBLE_STONE = registerBlock("p", Block(texture.cobblestone([0.6, 0.6, 0.6])));
+	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE));
 	
 	var DIRT  = registerBlock("d", Block(texture.dirt(dryDirtColor)));
 	var GRASS = registerBlock("g", Block(texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT));
