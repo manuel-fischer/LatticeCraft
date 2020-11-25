@@ -117,6 +117,8 @@ function scroll(dx, dy)
 	use namespace math; # for min, max
 	dx = Integer(dx);
 	dy = Integer(dy);
+	
+	if not canvasVisible then return;
 
 
 	var l = 1, r = 1;

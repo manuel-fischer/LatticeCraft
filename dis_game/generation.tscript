@@ -1,0 +1,77 @@
+namespace generation
+{
+	class Placer
+	{
+	protected:
+		var off_x, off_y;
+	public:
+		constructor(off_x, off_y)
+		{
+			this.off_x = off_x;
+			this.off_y = off_y;
+		}
+		
+		function copy() {}
+		
+		function shift(x, y) {
+			off_x += x;
+			off_y += y;
+			return this;
+		}
+		
+		function setBlock(x, y, block) {}
+	}
+
+	class ChunkPlacer : Placer
+	{
+	private:
+		var chunk;
+	public:
+		constructor(chunk, off_x, off_y): super(off_x, off_y)
+		{
+			this.chunk = chunk;
+		}
+		
+		function copy() {
+			return ChunkPlacer(chunk, off_x, off_y);
+		}
+		
+		function setBlock(x, y, block)
+		{
+			var xx = x+off_x;
+			var yy = y+off_y;
+			if xx and not 15 then return; #if xx < 0 or xx >= 16
+			if yy and not 15 then return; #if yy < 0 or yy >= 16
+			
+			chunk.blocks[xx + 16*yy] = block;
+		}
+	}
+	
+	class WorldPlacer : Placer
+	{
+	private:
+		var world;
+	public:
+		constructor(world, off_x, off_y): super(off_x, off_y)
+		{
+			this.world = world;
+		}
+		
+		function copy() {
+			return WorldPlacer(world, off_x, off_y);
+		}
+		
+		function setBlock(x, y, block)
+		{
+			var xx = x+off_x;
+			var yy = y+off_y;
+			world.setBlock(xx, yy, block);
+		}
+	}
+
+
+	function addStructure(structureFunc)
+	{
+		# TODO
+	}
+}

@@ -11,6 +11,7 @@ var thePlayer;
 
 #[section] main
 namespace world
+# TODO remove world namespace, move everything into world class
 {
 	namespace chunkUtil
 	{
@@ -276,13 +277,6 @@ namespace world
 		function getBlock(x, y)
 		{
 			return getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)];
-		}
-		
-		function refBlock(x, y)
-		{
-			var chunkData = getChunkData(x // 16, y // 16);
-			var chunkLoc = (x%16)+16*(y%16);
-			return [chunkData, chunkLoc];
 		}
 		
 	}
@@ -631,7 +625,7 @@ namespace dispWorld
 
 			allDirty = false;
 			
-			print("Rendering screen took " + (time()-t) + " ms");
+			#print("Rendering screen took " + (time()-t) + " ms");
 		}
 		
 		resetRender();
@@ -676,17 +670,6 @@ namespace entityBehavior
 	);
 }
 
-
-function worldTick()
-{
-	theWorld.tick();		
-		
-	updatePlayerScroll();
-		
-}
-# function worldTick
-
-
 #[section] serialization
 namespace world
 {
@@ -729,10 +712,10 @@ namespace world
 			else
 			{
 				count = math.max(1, count);
-				if not registeredBlocks.has(c) then
+				if not Block.registry.has(c) then
 					error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-				var block = registeredBlocks[c];
+				var block = Block.registry[c];
 				data = Array.concat(data, Array(count, block));
 				count = 0;
 			}
@@ -791,10 +774,10 @@ namespace world
 				}
 				else
 				{
-					if not registeredBlocks.has(c) then
+					if not Block.registry.has(c) then
 						error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-					var stack = inventory.ItemStack(count, registeredBlocks[c]);
+					var stack = inventory.ItemStack(count, Block.registry[c]);
 					slots.push(stack);
 				}
 				count = 0;	

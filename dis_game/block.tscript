@@ -1,0 +1,93 @@
+class Block
+{
+public:
+	static var registry = {};
+
+	var texture; # function()
+	var render; # function()
+	var drop;
+	var dropChance;
+	var solid; # can entities fall through or not
+	var tick; # function(x, y)
+	var place; # function(x, y) -> Boolean
+	var update; # function(x, y) or null
+	var onClick; # function(x, y)
+	var hasBlockData; # like inventories for chests
+	
+	var char; # set by register
+	
+	function renderItem()
+	{ 
+		textureState.renderSky = false;
+		render();
+		textureState.renderSky = true;
+	}
+	
+	constructor(
+		char_id,
+		texture, 
+		drop = true,
+		dropChance = 1.0,
+		solid = true,
+		tick=null,
+		place=null,
+		update=null,
+		onClick=null,
+		hasBlockData=false
+	) {
+		this.register(char_id);
+		
+		this.render = texture;
+		this.texture = texture;
+		
+		if drop == false then		this.drop = null;
+		else if drop == true then	this.drop = this;
+		else						this.drop = drop;
+		
+		this.dropChance = dropChance;
+		
+		this.solid = solid;
+		
+		if tick == null then
+			this.tick = function(x, y) {};
+		else
+			this.tick = tick;
+			
+		if place == null then
+			this.place = function[thisBlock = this](x, y) {
+				theWorld.setBlockUpdate(x, y, thisBlock);
+				return true;
+			};
+		else
+			this.place = place;
+			
+		this.update=update;
+		
+		if onClick == null then
+			this.onClick = function(x, y) {};
+		else
+			this.onClick = onClick;
+			
+		this.hasBlockData = hasBlockData;
+	}
+	
+	function register(char_id)
+	{
+		if registry.has(char_id) then error("Character '" + char_id + "' already used");
+		if this.char != null then error("Block already mapped to character");
+		if char_id.size() != 1 then error("Block character should be of size 1");
+		if "0" <= char_id and char_id <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
+		
+		this.char = char_id;
+		registry[char_id] = this;
+		return this;
+	}	
+}
+# class Block
+
+
+
+
+
+
+

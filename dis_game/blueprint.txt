@@ -3,9 +3,10 @@ util.tscript
 canvasUtil.tscript
 texture.tscript
 mod.tscript#textures
+generation.tscript
 world.tscript#fwd
 entities.tscript#behavior
-blocks.tscript
+block.tscript
 vanilla.tscript#blocks
 mod.tscript#blocks
 random.tscript

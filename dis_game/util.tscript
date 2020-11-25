@@ -20,18 +20,6 @@ namespace util
 		if char >= 65 and char <= 90 then return char or 32;
 		return char;
 	}
-	
-	
-	function timeit(func)
-	{	
-		#var a = time();
-		func();
-		#var b = time();
-		
-		#if b-a > 30 then
-		#	print(func + " took " + (b-a) + " ms");
-	}
-
 
 	function quotedString(string)
 	{

@@ -2,8 +2,6 @@
 # TODO cleanup and move texture section into this file
 namespace vanilla
 {
-	use namespace blocks; # TODO: remove blocks namespace completely
-	
 	namespace colors
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
@@ -13,39 +11,39 @@ namespace vanilla
 	}
 	use namespace colors;
 	
-	var AIR = registerBlock(" ", Block(texture.sky, drop=false, solid=false));
+	var AIR = Block(" ", texture.sky, drop=false, solid=false);
 	
-	var COBBLE_STONE = registerBlock("p", Block(texture.cobblestone([0.6, 0.6, 0.6])));
-	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE));
+	var COBBLE_STONE = Block("p", texture.cobblestone([0.6, 0.6, 0.6]));
+	var STONE = Block("s", texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE);
 	
-	var DIRT  = registerBlock("d", Block(texture.dirt(dryDirtColor)));
-	var GRASS = registerBlock("g", Block(texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT));
+	var DIRT  = Block("d", texture.dirt(dryDirtColor));
+	var GRASS = Block("g", texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT);
 	
-	var PLANKS     = registerBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
-	var LOG        = registerBlock("W", Block(texture.log(logColor), solid=false));
-	var SAPLING    = registerBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false));
-	var LEAVES     = registerBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false));
-	var LOG_LEAVES = registerBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false));
+	var PLANKS     = Block("w", texture.planks([0.8, 0.7, 0.5]));
+	var LOG        = Block("W", texture.log(logColor), solid=false);
+	var SAPLING    = Block("t", texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false);
+	var LEAVES     = Block("l", texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false);
+	var LOG_LEAVES = Block("L", texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false);
 	
-	var CRAFTING_TABLE = registerBlock("T", Block(
+	var CRAFTING_TABLE = Block("T", 
 		texture=texture.craftingTable([0.8, 0.7, 0.5], AIR.texture),
 		solid=false
-	));
-	var CHEST = registerBlock("C", Block(
+	);
+	var CHEST = Block("C", 
 		texture=texture.chest([0.8, 0.7, 0.5]),
 		solid=false
-	));
+	);
 	
 	
-	var GLASS = registerBlock("_", Block(texture.glass(AIR.texture)));
+	var GLASS = Block("_", texture.glass(AIR.texture));
 	
-	var BRICKS = registerBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
+	var BRICKS = Block("#", texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2]));
 	
 	
-	var COAL_ORE = registerBlock("c", Block(texture.ore([0.1, 0.1, 0.1], STONE.texture)));
+	var COAL_ORE = Block("c", texture.ore([0.1, 0.1, 0.1], STONE.texture));
 	
-	var SAND = registerBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
-	var WATER = registerBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
+	var SAND = Block("S", texture.solid([0.9, 0.8, 0.5]));
+	var WATER = Block("~", texture.solid([0.1, 0.2, 0.9]), solid=false);
 	
 	
 	function isSoil(b) {

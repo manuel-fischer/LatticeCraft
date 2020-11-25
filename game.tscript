@@ -104,18 +104,6 @@ namespace util
 		if char >= 65 and char <= 90 then return char or 32;
 		return char;
 	}
-	
-	
-	function timeit(func)
-	{	
-		#var a = time();
-		func();
-		#var b = time();
-		
-		#if b-a > 30 then
-		#	print(func + " took " + (b-a) + " ms");
-	}
-
 
 	function quotedString(string)
 	{
@@ -735,6 +723,84 @@ namespace mod
 	# add your texture functions here
 }
 
+#[file] generation.tscript
+namespace generation
+{
+	class Placer
+	{
+	protected:
+		var off_x, off_y;
+	public:
+		constructor(off_x, off_y)
+		{
+			this.off_x = off_x;
+			this.off_y = off_y;
+		}
+		
+		function copy() {}
+		
+		function shift(x, y) {
+			off_x += x;
+			off_y += y;
+			return this;
+		}
+		
+		function setBlock(x, y, block) {}
+	}
+
+	class ChunkPlacer : Placer
+	{
+	private:
+		var chunk;
+	public:
+		constructor(chunk, off_x, off_y): super(off_x, off_y)
+		{
+			this.chunk = chunk;
+		}
+		
+		function copy() {
+			return ChunkPlacer(chunk, off_x, off_y);
+		}
+		
+		function setBlock(x, y, block)
+		{
+			var xx = x+off_x;
+			var yy = y+off_y;
+			if xx and not 15 then return; #if xx < 0 or xx >= 16
+			if yy and not 15 then return; #if yy < 0 or yy >= 16
+			
+			chunk.blocks[xx + 16*yy] = block;
+		}
+	}
+	
+	class WorldPlacer : Placer
+	{
+	private:
+		var world;
+	public:
+		constructor(world, off_x, off_y): super(off_x, off_y)
+		{
+			this.world = world;
+		}
+		
+		function copy() {
+			return WorldPlacer(world, off_x, off_y);
+		}
+		
+		function setBlock(x, y, block)
+		{
+			var xx = x+off_x;
+			var yy = y+off_y;
+			world.setBlock(xx, yy, block);
+		}
+	}
+
+
+	function addStructure(structureFunc)
+	{
+		# TODO
+	}
+}
 #[file] world.tscript#fwd
 
 namespace theWorldCB
@@ -770,94 +836,93 @@ namespace entityBehavior
 
 
 
-#[file] blocks.tscript
-
-var registeredBlocks = {};
-function registerBlock(char, block)
+#[file] block.tscript
+class Block
 {
-	if registeredBlocks.has(char) then error("Character '" + char + "' already used");
-	if block.char != null then error("Block already mapped to character");
-	if char.size() != 1 then error("Block character should be of size 1");
-	if "0" <= char and char <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
+public:
+	static var registry = {};
+
+	var texture; # function()
+	var render; # function()
+	var drop;
+	var dropChance;
+	var solid; # can entities fall through or not
+	var tick; # function(x, y)
+	var place; # function(x, y) -> Boolean
+	var update; # function(x, y) or null
+	var onClick; # function(x, y)
+	var hasBlockData; # like inventories for chests
 	
-	block.char = char;
-	registeredBlocks[char] = block;
-	return block;
-}
-
-namespace blocks
-{
-
-	class Block
-	{
-	public:
-		var texture; # function()
-		var render; # function()
-		var drop;
-		var dropChance;
-		var solid; # can entities fall through or not
-		var tick; # function(x, y)
-		var place; # function(x, y) -> Boolean
-		var update; # function(x, y) or null
-		var onClick; # function(x, y)
-		var hasBlockData; # like inventories for chests
-		
-		var char; # set by mapCharToBlock
-		
-		function renderItem()
-		{ 
-			textureState.renderSky = false;
-			render();
-			textureState.renderSky = true;
-		}
-		
-		constructor(
-			texture, 
-			drop = true,
-			dropChance = 1.0,
-			solid = true,
-			tick=null,
-			place=null,
-			update=null,
-			onClick=null,
-			hasBlockData=false
-		) {
-			this.render = texture;
-			this.texture = texture;
-			
-			if drop == false then		this.drop = null;
-			else if drop == true then	this.drop = this;
-			else						this.drop = drop;
-			
-			this.dropChance = dropChance;
-			
-			this.solid = solid;
-			
-			if tick == null then
-				this.tick = function(x, y) {};
-			else
-				this.tick = tick;
-				
-			if place == null then
-				this.place = function[thisBlock = this](x, y) {
-					theWorld.setBlockUpdate(x, y, thisBlock);
-					return true;
-				};
-			else
-				this.place = place;
-				
-			this.update=update;
-			
-			if onClick == null then
-				this.onClick = function(x, y) {};
-			else
-				this.onClick = onClick;
-				
-			this.hasBlockData = hasBlockData;
-		}
+	var char; # set by register
+	
+	function renderItem()
+	{ 
+		textureState.renderSky = false;
+		render();
+		textureState.renderSky = true;
 	}
+	
+	constructor(
+		char_id,
+		texture, 
+		drop = true,
+		dropChance = 1.0,
+		solid = true,
+		tick=null,
+		place=null,
+		update=null,
+		onClick=null,
+		hasBlockData=false
+	) {
+		this.register(char_id);
+		
+		this.render = texture;
+		this.texture = texture;
+		
+		if drop == false then		this.drop = null;
+		else if drop == true then	this.drop = this;
+		else						this.drop = drop;
+		
+		this.dropChance = dropChance;
+		
+		this.solid = solid;
+		
+		if tick == null then
+			this.tick = function(x, y) {};
+		else
+			this.tick = tick;
+			
+		if place == null then
+			this.place = function[thisBlock = this](x, y) {
+				theWorld.setBlockUpdate(x, y, thisBlock);
+				return true;
+			};
+		else
+			this.place = place;
+			
+		this.update=update;
+		
+		if onClick == null then
+			this.onClick = function(x, y) {};
+		else
+			this.onClick = onClick;
+			
+		this.hasBlockData = hasBlockData;
+	}
+	
+	function register(char_id)
+	{
+		if registry.has(char_id) then error("Character '" + char_id + "' already used");
+		if this.char != null then error("Block already mapped to character");
+		if char_id.size() != 1 then error("Block character should be of size 1");
+		if "0" <= char_id and char_id <= "9" then error("Characters 0-9 reserved for numeric data"); # RLE and slot size in the inventory
+		
+		this.char = char_id;
+		registry[char_id] = this;
+		return this;
+	}	
 }
-# namespace blocks
+# class Block
 
 
 
@@ -869,8 +934,6 @@ namespace blocks
 # TODO cleanup and move texture section into this file
 namespace vanilla
 {
-	use namespace blocks; # TODO: remove blocks namespace completely
-	
 	namespace colors
 	{
 		var logColor =     [0.5, 0.2, 0.1]; #[0.6, 0.3, 0.2]; #[0.7, 0.5, 0.1];
@@ -880,39 +943,39 @@ namespace vanilla
 	}
 	use namespace colors;
 	
-	var AIR = registerBlock(" ", Block(texture.sky, drop=false, solid=false));
+	var AIR = Block(" ", texture.sky, drop=false, solid=false);
 	
-	var COBBLE_STONE = registerBlock("p", Block(texture.cobblestone([0.6, 0.6, 0.6])));
-	var STONE = registerBlock("s", Block(texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE));
+	var COBBLE_STONE = Block("p", texture.cobblestone([0.6, 0.6, 0.6]));
+	var STONE = Block("s", texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE);
 	
-	var DIRT  = registerBlock("d", Block(texture.dirt(dryDirtColor)));
-	var GRASS = registerBlock("g", Block(texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT));
+	var DIRT  = Block("d", texture.dirt(dryDirtColor));
+	var GRASS = Block("g", texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT);
 	
-	var PLANKS     = registerBlock("w", Block(texture.planks([0.8, 0.7, 0.5])));
-	var LOG        = registerBlock("W", Block(texture.log(logColor), solid=false));
-	var SAPLING    = registerBlock("t", Block(texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false));
-	var LEAVES     = registerBlock("l", Block(texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false));
-	var LOG_LEAVES = registerBlock("L", Block(texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false));
+	var PLANKS     = Block("w", texture.planks([0.8, 0.7, 0.5]));
+	var LOG        = Block("W", texture.log(logColor), solid=false);
+	var SAPLING    = Block("t", texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false);
+	var LEAVES     = Block("l", texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false);
+	var LOG_LEAVES = Block("L", texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false);
 	
-	var CRAFTING_TABLE = registerBlock("T", Block(
+	var CRAFTING_TABLE = Block("T", 
 		texture=texture.craftingTable([0.8, 0.7, 0.5], AIR.texture),
 		solid=false
-	));
-	var CHEST = registerBlock("C", Block(
+	);
+	var CHEST = Block("C", 
 		texture=texture.chest([0.8, 0.7, 0.5]),
 		solid=false
-	));
+	);
 	
 	
-	var GLASS = registerBlock("_", Block(texture.glass(AIR.texture)));
+	var GLASS = Block("_", texture.glass(AIR.texture));
 	
-	var BRICKS = registerBlock("#", Block(texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2])));
+	var BRICKS = Block("#", texture.bricks([1.0, 0.9, 0.8], [0.8, 0.1, 0.2]));
 	
 	
-	var COAL_ORE = registerBlock("c", Block(texture.ore([0.1, 0.1, 0.1], STONE.texture)));
+	var COAL_ORE = Block("c", texture.ore([0.1, 0.1, 0.1], STONE.texture));
 	
-	var SAND = registerBlock("S", Block(texture.solid([0.9, 0.8, 0.5])));
-	var WATER = registerBlock("~", Block(texture.solid([0.1, 0.2, 0.9]), solid=false));
+	var SAND = Block("S", texture.solid([0.9, 0.8, 0.5]));
+	var WATER = Block("~", texture.solid([0.1, 0.2, 0.9]), solid=false);
 	
 	
 	function isSoil(b) {
@@ -991,6 +1054,7 @@ var pressedKeys = {
 
 #[file] world.tscript#main
 namespace world
+# TODO remove world namespace, move everything into world class
 {
 	namespace chunkUtil
 	{
@@ -1256,13 +1320,6 @@ namespace world
 		function getBlock(x, y)
 		{
 			return getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)];
-		}
-		
-		function refBlock(x, y)
-		{
-			var chunkData = getChunkData(x // 16, y // 16);
-			var chunkLoc = (x%16)+16*(y%16);
-			return [chunkData, chunkLoc];
 		}
 		
 	}
@@ -2279,7 +2336,7 @@ namespace dispWorld
 
 			allDirty = false;
 			
-			print("Rendering screen took " + (time()-t) + " ms");
+			#print("Rendering screen took " + (time()-t) + " ms");
 		}
 		
 		resetRender();
@@ -2641,6 +2698,8 @@ function scroll(dx, dy)
 	use namespace math; # for min, max
 	dx = Integer(dx);
 	dy = Integer(dy);
+	
+	if not canvasVisible then return;
 
 
 	var l = 1, r = 1;
@@ -2857,17 +2916,6 @@ namespace entityBehavior
 		}
 	);
 }
-
-
-function worldTick()
-{
-	theWorld.tick();		
-		
-	updatePlayerScroll();
-		
-}
-# function worldTick
-
 
 #[file] gui.tscript#main
 namespace gui
@@ -4542,10 +4590,10 @@ namespace world
 			else
 			{
 				count = math.max(1, count);
-				if not registeredBlocks.has(c) then
+				if not Block.registry.has(c) then
 					error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-				var block = registeredBlocks[c];
+				var block = Block.registry[c];
 				data = Array.concat(data, Array(count, block));
 				count = 0;
 			}
@@ -4604,10 +4652,10 @@ namespace world
 				}
 				else
 				{
-					if not registeredBlocks.has(c) then
+					if not Block.registry.has(c) then
 						error("World might be from a newer version, there is no block '" + c + "'"); # TODO handle?
 					
-					var stack = inventory.ItemStack(count, registeredBlocks[c]);
+					var stack = inventory.ItemStack(count, Block.registry[c]);
 					slots.push(stack);
 				}
 				count = 0;	
@@ -5319,8 +5367,9 @@ namespace eventHandlers
 		}
 		else
 		{
-			util.timeit(worldTick);
-			util.timeit(controlTick);
+			theWorld.tick();	
+			updatePlayerScroll();
+			controlTick();
 		}
 		
 		# render
@@ -5331,7 +5380,7 @@ namespace eventHandlers
 			if gui.backDirty then
 			{
 				markCompletelyDirtyScreen();
-				util.timeit(render);
+				render();
 				gui.drawModalDisable();
 			}
 				
@@ -5340,8 +5389,8 @@ namespace eventHandlers
 			gui.modalDirty = false;
 		}
 		else
-		{
-			util.timeit(render);
+		{	
+			render();
 		}
 	});
 }

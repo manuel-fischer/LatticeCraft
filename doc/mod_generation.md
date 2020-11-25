@@ -13,6 +13,8 @@ for the same structure, in this case the function should not have side effects o
 `placer` has the member function, `setBlock(x, y, block)`.
 The placer object already offsets the coordinate system, so you only have to consider placing blocks around `(0, 0)`.
 Usually the origin is at the air block directly above the surface for surface structures.
+`placer` also has the member function `shift(x, y)` that shifts the coordinate system, it changes the placer and returns itself.
+If you want a new copy use `placer.copy().shift()`
 
 `random` is an object that has a function also named `random()`, which returns a random number between 0 and 1.
 This function should be preferred before using the builtin `math.random()` function,

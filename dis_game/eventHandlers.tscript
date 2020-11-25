@@ -223,8 +223,9 @@ namespace eventHandlers
 		}
 		else
 		{
-			util.timeit(worldTick);
-			util.timeit(controlTick);
+			theWorld.tick();	
+			updatePlayerScroll();
+			controlTick();
 		}
 		
 		# render
@@ -235,7 +236,7 @@ namespace eventHandlers
 			if gui.backDirty then
 			{
 				markCompletelyDirtyScreen();
-				util.timeit(render);
+				render();
 				gui.drawModalDisable();
 			}
 				
@@ -244,8 +245,8 @@ namespace eventHandlers
 			gui.modalDirty = false;
 		}
 		else
-		{
-			util.timeit(render);
+		{	
+			render();
 		}
 	});
 }
