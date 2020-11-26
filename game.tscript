@@ -244,6 +244,41 @@ namespace canvasUtil
 	
 	
 #[file] texture.tscript
+#*
+ *  Used to compile textures into an array like form
+ *  All functions work similar to the canvas namespace
+ *  When a texture is created with this, the resulting
+ *  object is a function that behaves like the original
+ *  texture function, except it might be faster
+ *#
+class TextureCanvas {}
+class TextureCompileCanvas : TextureCanvas
+{
+public:
+	# clear background/draw background tile
+	# should be done if the texture has transparent regions
+	# that is when the texture does not fill up the whole block
+	function clear()
+	{
+	}
+	
+	function scale()
+	{
+	}
+	
+	function setFillColor(r, g, b, a=1)
+	{
+	}
+	function setFillColorV(arr)
+	{
+	}
+	
+	function fillRect(x, y, w, h)
+	{
+	}
+}
+
+
 
 namespace textureState
 {
