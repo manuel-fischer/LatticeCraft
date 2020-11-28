@@ -11,6 +11,7 @@ vanilla.tscript#blocks
 mod.tscript#blocks
 random.tscript
 control.tscript#fwd
+geometry.tscrip
 world.tscript#main
 disp.tscript#fwd
 entities.tscript#disp
@@ -27,6 +28,7 @@ gui.tscript#main
 gui.tscript#GuiSettings
 inventory.tscript#gui.GuiInventory
 world.tscript#serialization
+blockdata.tscript
 gamemenu.tscript
 vanilla.tscript#blockBehavior
 mod.tscript#blockBehavior

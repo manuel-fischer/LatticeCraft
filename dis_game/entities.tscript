@@ -22,6 +22,7 @@ namespace entityBehavior
 
 
 
+
 #[section] disp
 
 namespace entityDisp
@@ -150,8 +151,8 @@ namespace entities
 
 				var ilx0 = Integer(lx+0.01), irx0 = Integer(rx-0.01);
 
-				var collidesLeft  = world.worldUtil.hasSolidBlock([ilx], ity:iy0+1);
-				var collidesRight = world.worldUtil.hasSolidBlock([irx], ity:iy0+1);
+				var collidesLeft  = theWorld.hasTaggedBlocks([ilx], ity:iy0+1, "solid");
+				var collidesRight = theWorld.hasTaggedBlocks([irx], ity:iy0+1, "solid");
 
 				if collidesLeft and collidesRight then
 				{
@@ -184,8 +185,8 @@ namespace entities
 					ity = Integer(y+t);
 				}
 				
-				var collidesBottom = world.worldUtil.hasSolidBlock(ilx0:irx0+1, [iy]);
-				var collidesTop    = world.worldUtil.hasSolidBlock(ilx0:irx0+1, [ity]);
+				var collidesBottom = theWorld.hasTaggedBlocks(ilx0:irx0+1, [iy], "solid");
+				var collidesTop    = theWorld.hasTaggedBlocks(ilx0:irx0+1, [ity], "solid");
 				isOnGround = collidesBottom;
 				
 				if collidesBottom and collidesTop then

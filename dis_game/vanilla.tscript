@@ -11,7 +11,7 @@ namespace vanilla
 	}
 	use namespace colors;
 	
-	var AIR = Block(" ", texture.sky, drop=false, solid=false);
+	var AIR = Block(" ", texture.sky, drop=false, tags={solid:false});
 	
 	var COBBLE_STONE = Block("p", texture.cobblestone([0.6, 0.6, 0.6]));
 	var STONE = Block("s", texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE);
@@ -20,18 +20,18 @@ namespace vanilla
 	var GRASS = Block("g", texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT);
 	
 	var PLANKS     = Block("w", texture.planks([0.8, 0.7, 0.5]));
-	var LOG        = Block("W", texture.log(logColor), solid=false);
-	var SAPLING    = Block("t", texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false);
-	var LEAVES     = Block("l", texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false);
-	var LOG_LEAVES = Block("L", texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false);
+	var LOG        = Block("W", texture.log(logColor), tags={solid:false});
+	var SAPLING    = Block("t", texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), tags={solid:false});
+	var LEAVES     = Block("l", texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, tags={solid:false});
+	var LOG_LEAVES = Block("L", texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, tags={solid:false});
 	
 	var CRAFTING_TABLE = Block("T", 
 		texture=texture.craftingTable([0.8, 0.7, 0.5], AIR.texture),
-		solid=false
+		tags={solid:false}
 	);
 	var CHEST = Block("C", 
 		texture=texture.chest([0.8, 0.7, 0.5]),
-		solid=false
+		tags={solid:false}
 	);
 	
 	
@@ -43,7 +43,7 @@ namespace vanilla
 	var COAL_ORE = Block("c", texture.ore([0.1, 0.1, 0.1], STONE.texture));
 	
 	var SAND = Block("S", texture.solid([0.9, 0.8, 0.5]));
-	var WATER = Block("~", texture.solid([0.1, 0.2, 0.9]), solid=false);
+	var WATER = Block("~", texture.solid([0.1, 0.2, 0.9]), tags={solid:false});
 	
 	
 	function isSoil(b) {
@@ -124,7 +124,7 @@ namespace vanilla
 	
 	vanilla.DIRT.tick = function(x, y)
 	{
-		if not theWorld.getBlock(x, y-1).solid then
+		if not theWorld.getBlock(x, y-1).tags.has("solid") then
 		{
 			for var xx in [x-1, x+1] do
 			for var yy in  y-1: y+2  do
@@ -140,7 +140,7 @@ namespace vanilla
 	
 	vanilla.GRASS.tick = function(x, y)
 	{
-		if theWorld.getBlock(x, y-1).solid then
+		if theWorld.getBlock(x, y-1).tags.has("solid") then
 			theWorld.setBlock(x, y, vanilla.DIRT);
 	};
 	
@@ -248,6 +248,7 @@ namespace vanilla
 		));
 	};
 	
+	vanilla.CHEST.blockDataHandler=blockdata.InventoryHandler(10*3);
 	
 	vanilla.CHEST.onClick=function(x, y)
 	{
@@ -258,7 +259,7 @@ namespace vanilla
 			inventory.slots,
 			inventory.hotbarSize, 
 			inventory.backpackSize,
-			Array(10*3),
+			theWorld.getBlockData(x, y),
 			10, 3
 		));
 	};

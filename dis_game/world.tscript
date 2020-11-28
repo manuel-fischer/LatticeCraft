@@ -46,7 +46,7 @@ namespace world
 	}
 	
 	# TODO make world specific
-	namespace worldUtil
+	#*namespace worldUtil
 	{
 		function hasSolidBlock(rx, ry)
 		{
@@ -56,14 +56,7 @@ namespace world
 				
 			return false;
 		}
-		
-		function boxesIntersecting(a, b)
-		{
-			return a[0] < b[2] and a[2] > b[0]
-							   and
-				   a[1] < b[3] and a[3] > b[1];
-		}
-	}
+	}*#
 }
 
 
@@ -76,11 +69,14 @@ namespace world
 	{
 	public:
 		var blocks;
+		var data;
 		
 		constructor(block_or_blocks)
 		{
 			if Type(block_or_blocks) == Array then blocks = block_or_blocks;
 			else blocks = Array(16*16, block_or_blocks);
+			
+			data = {};
 		}
 	}
 
@@ -250,9 +246,9 @@ namespace world
 			this.players = [];
 		}
 		
-		function getChunkData(cx, cy)
+		function getChunk(cx, cy)
 		{	
-			if lastChunkX == cx and lastChunkY == cy then return lastChunk.blocks;
+			if lastChunkX == cx and lastChunkY == cy then return lastChunk;
 		
 			lastChunkX = cx; lastChunkY = cy;
 			
@@ -264,19 +260,35 @@ namespace world
 				lastChunk = chunkGenerator.generateChunk(cx, cy);
 				chunks[chunkid] = lastChunk;
 			}
-			return lastChunk.blocks;
+			return lastChunk;
 		}
 		
 		function setBlock(x, y, block)
 		{
-			getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)] = block;
-			#onBlockChanged(x, y);
+			var chunk = getChunk(x // 16, y // 16);
+			var index = (x%16)+16*(y%16);
+			var sIndex = String(index);
+			if chunk.data.has(sIndex) then
+			{
+				# cleanup / drop contained inventory etc...
+				chunk.data.remove(sIndex);
+			}
+			chunk.blocks[index] = block;
+			if block.blockDataHandler != null then
+			{
+				chunk.data[sIndex] = block.blockDataHandler.createBlockData();
+			}
 			theWorldCB.markDirtyCB(x, y);
 		}
 		
 		function getBlock(x, y)
 		{
-			return getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)];
+			return getChunk(x // 16, y // 16).blocks[(x%16)+16*(y%16)];
+		}
+		
+		function getBlockData(x, y)
+		{
+			return getChunk(x // 16, y // 16).data[String((x%16)+16*(y%16))];
 		}
 		
 	}
@@ -312,6 +324,15 @@ namespace world
 			updateNeighbors(x, y);	
 		}
 		
+		function hasTaggedBlocks(rx, ry, tagName)
+		{
+			for var y in ry do
+			for var x in rx do
+				if getBlock(x, y).tags.has(tagName) then return true;
+				
+			return false;
+		}
+		
 		function tick()
 		{
 			# random block ticks
@@ -344,7 +365,7 @@ namespace world
 				var d = entities[i];
 				var e = entities[j];
 
-				if world.worldUtil.boxesIntersecting(d.getAbsBox(), e.getAbsBox()) then
+				if geometry.boxesIntersecting(d.getAbsBox(), e.getAbsBox()) then
 				{
 					entityBehavior.onEntityCollision(d, e);
 					entityBehavior.onEntityCollision(e, d);
@@ -511,7 +532,7 @@ namespace dispWorld
 		for var cy in rcy do
 		for var cx in rcx do
 		{
-			dispChunks.push(theWorld.getChunkData(cx, cy));
+			dispChunks.push(theWorld.getChunk(cx, cy).blocks);
 		}
 	}
 	
@@ -673,7 +694,7 @@ namespace entityBehavior
 #[section] serialization
 namespace world
 {
-	function serializeChunk(chunk)
+	function serializeChunkBlocks(chunk)
 	{
 		var chunkData = chunk.blocks;
 		
@@ -699,7 +720,7 @@ namespace world
 		
 		return str;
 	}
-	function deserializeChunk(sChunkData)
+	function deserializeChunkBlocks(sChunkData)
 	{
 		var data = [];
 		var count = 0;
@@ -723,6 +744,49 @@ namespace world
 		
 		if data.size() != 256 then error("World data has been corrupted"); # TODO handle?
 		return world.Chunk(data);
+	}
+	function serializeChunkData(chunk)
+	{
+		var dictData = {};
+		for var key in chunk.data.keys() do
+		{
+			var index = Integer(key);
+			dictData[key] = chunk.blocks[index].blockDataHandler.serializeBlockData(chunk.data[key]);
+		}
+		return dictData;
+	}
+	function deserializeChunkData(chunk, dictData)
+	{
+		for var key in dictData.keys() do
+		{
+			var index = Integer(key);
+			chunk.data[key] = chunk.blocks[index].blockDataHandler.deserializeBlockData(dictData[key]);
+		}
+		return chunk;
+	}
+	
+	function serializeChunk(chunk)
+	{
+		if chunk.data.size() == 0 then
+			return serializeChunkBlocks(chunk);
+		else
+		{
+			return {"blocks": serializeChunkBlocks(chunk),
+					"data":   serializeChunkData(chunk)};
+		}
+	}
+	function deserializeChunk(sChunkData)
+	{
+		if Type(sChunkData) == String then
+		{
+			return deserializeChunkBlocks(sChunkData);
+		}
+		else
+		{
+			var chunk = deserializeChunkBlocks(sChunkData["blocks"]);
+			if(sChunkData.has("data")) then deserializeChunkData(chunk, sChunkData["data"]);
+			return chunk;
+		}
 	}
 	
 	function serializeInventory(slots)
@@ -897,3 +961,10 @@ namespace world
 		world.bindPlayer(p);	
 	}
 }
+
+
+
+
+
+
+

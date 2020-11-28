@@ -1,0 +1,45 @@
+namespace blockdata
+{
+	class Handler
+	{
+	public:
+		# function that creates empty data
+		function createBlockData() { return null; }
+		
+		# function that returns a json object, that represents the given data
+		function serializeBlockData(data) { return null; }
+		# function that returns the data, that is represented by the given json object
+		function deserializeBlockData(json) { return null; }
+	}
+	class InventoryHandler : Handler
+	{
+	public:
+		var inventorySize;
+		
+		constructor(inventorySize)
+		{
+			this.inventorySize = inventorySize;
+		}
+		
+		function createBlockData()
+		{
+			return Array(inventorySize, null);
+		}
+		
+		function serializeBlockData(data)
+		{
+			return world.serializeInventory(data);
+		}
+		
+		function deserializeBlockData(json)
+		{
+			return world.deserializeInventory(json);
+		}
+	}
+}
+
+
+
+
+
+

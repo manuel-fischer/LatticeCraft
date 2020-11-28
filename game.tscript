@@ -871,24 +871,33 @@ namespace entityBehavior
 
 
 
+
 #[file] block.tscript
 class Block
 {
 public:
 	static var registry = {};
+	static var allTags = {};
+	
+	
+	var char; # set by register
 
 	var texture; # function()
 	var render; # function()
 	var drop;
 	var dropChance;
-	var solid; # can entities fall through or not
+	var tags; # block tags, that are boolean properties -> resulting in sets of blocks
+			  # only true tags are kept, so that it results in a Dictionary that maps strings to true
+			  # commonly used tags:
+			  # - "solid": blocks where entities cannot walk/fall through
+			  
+	# these properties can be changed after the Block-object has been created
+	# until the game has started up
 	var tick; # function(x, y)
 	var place; # function(x, y) -> Boolean
 	var update; # function(x, y) or null
 	var onClick; # function(x, y)
-	var hasBlockData; # like inventories for chests
-	
-	var char; # set by register
+	var blockDataHandler; # like inventories for chests
 	
 	function renderItem()
 	{ 
@@ -902,12 +911,12 @@ public:
 		texture, 
 		drop = true,
 		dropChance = 1.0,
-		solid = true,
+		tags = {solid: true}, # should be a Dictionary that maps to boolean values, or an array of strings
 		tick=null,
 		place=null,
 		update=null,
 		onClick=null,
-		hasBlockData=false
+		blockDataHandler=null
 	) {
 		this.register(char_id);
 		
@@ -920,7 +929,7 @@ public:
 		
 		this.dropChance = dropChance;
 		
-		this.solid = solid;
+		this.registerTags(tags);
 		
 		if tick == null then
 			this.tick = function(x, y) {};
@@ -942,9 +951,9 @@ public:
 		else
 			this.onClick = onClick;
 			
-		this.hasBlockData = hasBlockData;
+		this.blockDataHandler = blockDataHandler;
 	}
-	
+
 	function register(char_id)
 	{
 		if registry.has(char_id) then error("Character '" + char_id + "' already used");
@@ -955,7 +964,40 @@ public:
 		this.char = char_id;
 		registry[char_id] = this;
 		return this;
-	}	
+	}
+	
+	function addTag(tag)
+	{
+		this.tags[tag] = true;
+		if allTags.has(tag) then
+		{
+			allTags[tag].push(this);
+		}
+		else
+		{
+			allTags[tag] = [this];
+		}	
+	}
+	
+	function registerTags(tags)
+	{
+		this.tags = {};
+		if Type(tags) == Dictionary then
+		{
+			for var tag in tags.keys() do
+			{
+				if tags[tag] then addTag(tag);
+			}
+		}
+		else if Type(tags) == Array then
+		{
+			for var tag in tags do
+			{
+				addTag(tag);
+			}
+		}
+		else error("The tags parameter should be a Dictionary to Booleans or an Array of Strings");
+	}
 }
 # class Block
 
@@ -978,7 +1020,7 @@ namespace vanilla
 	}
 	use namespace colors;
 	
-	var AIR = Block(" ", texture.sky, drop=false, solid=false);
+	var AIR = Block(" ", texture.sky, drop=false, tags={solid:false});
 	
 	var COBBLE_STONE = Block("p", texture.cobblestone([0.6, 0.6, 0.6]));
 	var STONE = Block("s", texture.stone([0.6, 0.6, 0.6]), drop=COBBLE_STONE);
@@ -987,18 +1029,18 @@ namespace vanilla
 	var GRASS = Block("g", texture.grown([0.2, 0.7, 0.3], DIRT.texture), drop=DIRT);
 	
 	var PLANKS     = Block("w", texture.planks([0.8, 0.7, 0.5]));
-	var LOG        = Block("W", texture.log(logColor), solid=false);
-	var SAPLING    = Block("t", texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), solid=false);
-	var LEAVES     = Block("l", texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, solid=false);
-	var LOG_LEAVES = Block("L", texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, solid=false);
+	var LOG        = Block("W", texture.log(logColor), tags={solid:false});
+	var SAPLING    = Block("t", texture.sapling(logColor, [0.2, 0.7, 0.3], AIR.texture), tags={solid:false});
+	var LEAVES     = Block("l", texture.leaves([0.2, 0.7, 0.3], AIR.texture), SAPLING, 0.25, tags={solid:false});
+	var LOG_LEAVES = Block("L", texture.leaves([0.2, 0.7, 0.3], LOG.texture), LOG, tags={solid:false});
 	
 	var CRAFTING_TABLE = Block("T", 
 		texture=texture.craftingTable([0.8, 0.7, 0.5], AIR.texture),
-		solid=false
+		tags={solid:false}
 	);
 	var CHEST = Block("C", 
 		texture=texture.chest([0.8, 0.7, 0.5]),
-		solid=false
+		tags={solid:false}
 	);
 	
 	
@@ -1010,7 +1052,7 @@ namespace vanilla
 	var COAL_ORE = Block("c", texture.ore([0.1, 0.1, 0.1], STONE.texture));
 	
 	var SAND = Block("S", texture.solid([0.9, 0.8, 0.5]));
-	var WATER = Block("~", texture.solid([0.1, 0.2, 0.9]), solid=false);
+	var WATER = Block("~", texture.solid([0.1, 0.2, 0.9]), tags={solid:false});
 	
 	
 	function isSoil(b) {
@@ -1087,6 +1129,22 @@ var pressedKeys = {
 
 
 
+
+#[file] geometry.tscrip
+namespace geometry
+{
+	function boxesIntersecting(a, b)
+	{
+		return a[0] < b[2] and a[2] > b[0]
+						   and
+			   a[1] < b[3] and a[3] > b[1];
+	}
+}
+
+
+
+
+
 #[file] world.tscript#main
 namespace world
 # TODO remove world namespace, move everything into world class
@@ -1124,7 +1182,7 @@ namespace world
 	}
 	
 	# TODO make world specific
-	namespace worldUtil
+	#*namespace worldUtil
 	{
 		function hasSolidBlock(rx, ry)
 		{
@@ -1134,14 +1192,7 @@ namespace world
 				
 			return false;
 		}
-		
-		function boxesIntersecting(a, b)
-		{
-			return a[0] < b[2] and a[2] > b[0]
-							   and
-				   a[1] < b[3] and a[3] > b[1];
-		}
-	}
+	}*#
 }
 
 
@@ -1154,11 +1205,14 @@ namespace world
 	{
 	public:
 		var blocks;
+		var data;
 		
 		constructor(block_or_blocks)
 		{
 			if Type(block_or_blocks) == Array then blocks = block_or_blocks;
 			else blocks = Array(16*16, block_or_blocks);
+			
+			data = {};
 		}
 	}
 
@@ -1328,9 +1382,9 @@ namespace world
 			this.players = [];
 		}
 		
-		function getChunkData(cx, cy)
+		function getChunk(cx, cy)
 		{	
-			if lastChunkX == cx and lastChunkY == cy then return lastChunk.blocks;
+			if lastChunkX == cx and lastChunkY == cy then return lastChunk;
 		
 			lastChunkX = cx; lastChunkY = cy;
 			
@@ -1342,19 +1396,35 @@ namespace world
 				lastChunk = chunkGenerator.generateChunk(cx, cy);
 				chunks[chunkid] = lastChunk;
 			}
-			return lastChunk.blocks;
+			return lastChunk;
 		}
 		
 		function setBlock(x, y, block)
 		{
-			getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)] = block;
-			#onBlockChanged(x, y);
+			var chunk = getChunk(x // 16, y // 16);
+			var index = (x%16)+16*(y%16);
+			var sIndex = String(index);
+			if chunk.data.has(sIndex) then
+			{
+				# cleanup / drop contained inventory etc...
+				chunk.data.remove(sIndex);
+			}
+			chunk.blocks[index] = block;
+			if block.blockDataHandler != null then
+			{
+				chunk.data[sIndex] = block.blockDataHandler.createBlockData();
+			}
 			theWorldCB.markDirtyCB(x, y);
 		}
 		
 		function getBlock(x, y)
 		{
-			return getChunkData(x // 16, y // 16)[(x%16)+16*(y%16)];
+			return getChunk(x // 16, y // 16).blocks[(x%16)+16*(y%16)];
+		}
+		
+		function getBlockData(x, y)
+		{
+			return getChunk(x // 16, y // 16).data[String((x%16)+16*(y%16))];
 		}
 		
 	}
@@ -1390,6 +1460,15 @@ namespace world
 			updateNeighbors(x, y);	
 		}
 		
+		function hasTaggedBlocks(rx, ry, tagName)
+		{
+			for var y in ry do
+			for var x in rx do
+				if getBlock(x, y).tags.has(tagName) then return true;
+				
+			return false;
+		}
+		
 		function tick()
 		{
 			# random block ticks
@@ -1422,7 +1501,7 @@ namespace world
 				var d = entities[i];
 				var e = entities[j];
 
-				if world.worldUtil.boxesIntersecting(d.getAbsBox(), e.getAbsBox()) then
+				if geometry.boxesIntersecting(d.getAbsBox(), e.getAbsBox()) then
 				{
 					entityBehavior.onEntityCollision(d, e);
 					entityBehavior.onEntityCollision(e, d);
@@ -1866,8 +1945,8 @@ namespace entities
 
 				var ilx0 = Integer(lx+0.01), irx0 = Integer(rx-0.01);
 
-				var collidesLeft  = world.worldUtil.hasSolidBlock([ilx], ity:iy0+1);
-				var collidesRight = world.worldUtil.hasSolidBlock([irx], ity:iy0+1);
+				var collidesLeft  = theWorld.hasTaggedBlocks([ilx], ity:iy0+1, "solid");
+				var collidesRight = theWorld.hasTaggedBlocks([irx], ity:iy0+1, "solid");
 
 				if collidesLeft and collidesRight then
 				{
@@ -1900,8 +1979,8 @@ namespace entities
 					ity = Integer(y+t);
 				}
 				
-				var collidesBottom = world.worldUtil.hasSolidBlock(ilx0:irx0+1, [iy]);
-				var collidesTop    = world.worldUtil.hasSolidBlock(ilx0:irx0+1, [ity]);
+				var collidesBottom = theWorld.hasTaggedBlocks(ilx0:irx0+1, [iy], "solid");
+				var collidesTop    = theWorld.hasTaggedBlocks(ilx0:irx0+1, [ity], "solid");
 				isOnGround = collidesBottom;
 				
 				if collidesBottom and collidesTop then
@@ -2257,7 +2336,7 @@ namespace dispWorld
 		for var cy in rcy do
 		for var cx in rcx do
 		{
-			dispChunks.push(theWorld.getChunkData(cx, cy));
+			dispChunks.push(theWorld.getChunk(cx, cy).blocks);
 		}
 	}
 	
@@ -4586,7 +4665,7 @@ namespace gui
 #[file] world.tscript#serialization
 namespace world
 {
-	function serializeChunk(chunk)
+	function serializeChunkBlocks(chunk)
 	{
 		var chunkData = chunk.blocks;
 		
@@ -4612,7 +4691,7 @@ namespace world
 		
 		return str;
 	}
-	function deserializeChunk(sChunkData)
+	function deserializeChunkBlocks(sChunkData)
 	{
 		var data = [];
 		var count = 0;
@@ -4636,6 +4715,49 @@ namespace world
 		
 		if data.size() != 256 then error("World data has been corrupted"); # TODO handle?
 		return world.Chunk(data);
+	}
+	function serializeChunkData(chunk)
+	{
+		var dictData = {};
+		for var key in chunk.data.keys() do
+		{
+			var index = Integer(key);
+			dictData[key] = chunk.blocks[index].blockDataHandler.serializeBlockData(chunk.data[key]);
+		}
+		return dictData;
+	}
+	function deserializeChunkData(chunk, dictData)
+	{
+		for var key in dictData.keys() do
+		{
+			var index = Integer(key);
+			chunk.data[key] = chunk.blocks[index].blockDataHandler.deserializeBlockData(dictData[key]);
+		}
+		return chunk;
+	}
+	
+	function serializeChunk(chunk)
+	{
+		if chunk.data.size() == 0 then
+			return serializeChunkBlocks(chunk);
+		else
+		{
+			return {"blocks": serializeChunkBlocks(chunk),
+					"data":   serializeChunkData(chunk)};
+		}
+	}
+	function deserializeChunk(sChunkData)
+	{
+		if Type(sChunkData) == String then
+		{
+			return deserializeChunkBlocks(sChunkData);
+		}
+		else
+		{
+			var chunk = deserializeChunkBlocks(sChunkData["blocks"]);
+			if(sChunkData.has("data")) then deserializeChunkData(chunk, sChunkData["data"]);
+			return chunk;
+		}
 	}
 	
 	function serializeInventory(slots)
@@ -4810,6 +4932,59 @@ namespace world
 		world.bindPlayer(p);	
 	}
 }
+
+
+
+
+
+
+
+#[file] blockdata.tscript
+namespace blockdata
+{
+	class Handler
+	{
+	public:
+		# function that creates empty data
+		function createBlockData() { return null; }
+		
+		# function that returns a json object, that represents the given data
+		function serializeBlockData(data) { return null; }
+		# function that returns the data, that is represented by the given json object
+		function deserializeBlockData(json) { return null; }
+	}
+	class InventoryHandler : Handler
+	{
+	public:
+		var inventorySize;
+		
+		constructor(inventorySize)
+		{
+			this.inventorySize = inventorySize;
+		}
+		
+		function createBlockData()
+		{
+			return Array(inventorySize, null);
+		}
+		
+		function serializeBlockData(data)
+		{
+			return world.serializeInventory(data);
+		}
+		
+		function deserializeBlockData(json)
+		{
+			return world.deserializeInventory(json);
+		}
+	}
+}
+
+
+
+
+
+
 #[file] gamemenu.tscript
 namespace gamemenu
 {
@@ -5032,7 +5207,7 @@ namespace vanilla
 	
 	vanilla.DIRT.tick = function(x, y)
 	{
-		if not theWorld.getBlock(x, y-1).solid then
+		if not theWorld.getBlock(x, y-1).tags.has("solid") then
 		{
 			for var xx in [x-1, x+1] do
 			for var yy in  y-1: y+2  do
@@ -5048,7 +5223,7 @@ namespace vanilla
 	
 	vanilla.GRASS.tick = function(x, y)
 	{
-		if theWorld.getBlock(x, y-1).solid then
+		if theWorld.getBlock(x, y-1).tags.has("solid") then
 			theWorld.setBlock(x, y, vanilla.DIRT);
 	};
 	
@@ -5156,6 +5331,7 @@ namespace vanilla
 		));
 	};
 	
+	vanilla.CHEST.blockDataHandler=blockdata.InventoryHandler(10*3);
 	
 	vanilla.CHEST.onClick=function(x, y)
 	{
@@ -5166,7 +5342,7 @@ namespace vanilla
 			inventory.slots,
 			inventory.hotbarSize, 
 			inventory.backpackSize,
-			Array(10*3),
+			theWorld.getBlockData(x, y),
 			10, 3
 		));
 	};
